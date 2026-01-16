@@ -9,9 +9,9 @@ const checkAndCreateUser = async (user) => {
         if (!userDocSnap.exists()) {
             await setDoc(userDocRef, {
                 userId: user.uid,
-                email: user.email,
-                displayName: user.displayName,
-                photoURL: user.photoURL,
+                email: user.email || null,
+                displayName: user.displayName || null,
+                photoURL: user.photoURL || null,
                 myWords: [],
                 score: 0,
                 quizs: [],
