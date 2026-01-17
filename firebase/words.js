@@ -1,5 +1,5 @@
 import { firestore } from "./firebase";
-import { collection, addDoc, getDocs, query, where } from "firebase/firestore";
+import { collection, addDoc, getDocs, query, where, doc, getDoc } from "firebase/firestore";
 
 const addWord = async (wordData) => {
     try {
@@ -60,4 +60,21 @@ const getWordsByENGCategoryId = async (ENGCategoryId) => {
     }
 };
 
-export { addWord, getAllWords, getWordsByTRCategoryId, getWordsByENGCategoryId };
+const getWordById = async (wordId) => {
+    try {
+        const docRef = doc(firestore, "words", wordId);
+        const docSnap = await getDoc(docRef);
+
+        if (docSnap.exists()) {
+            return { id: docSnap.id, ...docSnap.data() };
+        } else {
+            console.log("No such word!");
+            return null;
+        }
+    } catch (error) {
+        console.error("Error fetching word:", error);
+        throw error;
+    }
+};
+
+export { addWord, getAllWords, getWordsByTRCategoryId, getWordsByENGCategoryId, getWordById };
