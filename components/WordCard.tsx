@@ -1,8 +1,15 @@
 "use client";
 
 import { useState } from "react";
+import { Plus, Check } from "lucide-react";
 
-export default function WordCard({ word }: { word: any }) {
+interface WordCardProps {
+    word: any;
+    onAdd?: (wordId: string) => void;
+    isAdded?: boolean;
+}
+
+export default function WordCard({ word, onAdd, isAdded = false }: WordCardProps) {
     const [isFlipped, setIsFlipped] = useState(false);
 
     return (
@@ -15,6 +22,22 @@ export default function WordCard({ word }: { word: any }) {
                 {/* Ön Yüz - İngilizce */}
                 <div className="absolute w-full h-full backface-hidden bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex items-center justify-center">
                     <span className="text-xl font-bold text-[#3FB8F5]">{word.eng}</span>
+
+                    {onAdd && (
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                if (!isAdded) onAdd(word.id);
+                            }}
+                            disabled={isAdded}
+                            className={`absolute top-3 right-3 p-2 rounded-full transition-colors ${isAdded
+                                ? "bg-green-100 text-green-600 cursor-default"
+                                : "bg-blue-50 text-blue-500 hover:bg-blue-100 hover:scale-110 active:scale-95"
+                                }`}
+                        >
+                            {isAdded ? <Check className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+                        </button>
+                    )}
                 </div>
 
                 {/* Arka Yüz - Türkçe */}

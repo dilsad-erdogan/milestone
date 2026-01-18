@@ -7,8 +7,6 @@ import { addWord, getWordById } from "../../firebase/words";
 import { addWordToUser, getUserWords } from "../../firebase/accounts";
 import AuthGuard from "@/components/AuthGuard";
 import { useAuth } from "@/context/AuthContext";
-
-
 import WordCard from "../../components/WordCard";
 
 export default function MyWordsPage() {
