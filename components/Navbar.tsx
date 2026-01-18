@@ -36,23 +36,31 @@ export default function Navbar() {
                     </Link>
 
                     {/* Navigation Links */}
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2 sm:gap-4">
                         <Link
-                            href="/add-word"
-                            className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-slate-600 hover:text-[#3FB8F5] hover:bg-[#3FB8F5]/20 rounded-full transition-all active:scale-95"
+                            href="/pool"
+                            className="flex items-center justify-center gap-2 px-4 h-10 text-sm font-semibold text-slate-600 hover:text-[#3FB8F5] hover:bg-[#3FB8F5]/20 rounded-full transition-all active:scale-95"
                         >
-                            <PlusCircle className="h-4 w-4" />
-                            <span className="hidden sm:inline">Kelimelerim</span>
+                            <div className="p-1"> <BookOpen className="h-4 w-4" /> </div>
+                            <span className="hidden sm:inline pt-[2px]">Havuz</span>
                         </Link>
 
-                        <div className="h-6 w-[1px] bg-gray-200 mx-1 hidden sm:block"></div>
+                        <Link
+                            href="/add-word"
+                            className="flex items-center justify-center gap-2 px-4 h-10 text-sm font-semibold text-slate-600 hover:text-[#3FB8F5] hover:bg-[#3FB8F5]/20 rounded-full transition-all active:scale-95"
+                        >
+                            <PlusCircle className="h-4 w-4" />
+                            <span className="hidden sm:inline pt-[2px]">Kelimelerim</span>
+                        </Link>
+
+                        <div className="h-6 w-[1px] bg-gray-200 hidden sm:block"></div>
 
                         <button
                             onClick={handleLogout}
-                            className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-slate-600 hover:text-red-600 hover:bg-red-50 rounded-full transition-all active:scale-95"
+                            className="flex items-center justify-center gap-2 px-4 h-10 text-sm font-semibold text-slate-600 hover:text-red-600 hover:bg-red-50 rounded-full transition-all active:scale-95"
                         >
                             <LogOut className="h-4 w-4" />
-                            <span className="hidden sm:inline">Çıkış Yap</span>
+                            <span className="hidden sm:inline pt-[2px]">Çıkış Yap</span>
                         </button>
                     </div>
                 </div>
