@@ -4,8 +4,8 @@ import { collection, addDoc, getDocs, query, where, doc, getDoc } from "firebase
 const addWord = async (wordData) => {
     try {
         const docRef = await addDoc(collection(firestore, "words"), {
-            eng: wordData.eng,
-            tr: wordData.tr,
+            eng: wordData.eng.toLocaleUpperCase('tr-TR'),
+            tr: wordData.tr.toLocaleUpperCase('tr-TR'),
             eng_categoryId: wordData.eng_categoryId,
             tr_categoryId: wordData.tr_categoryId
         });
