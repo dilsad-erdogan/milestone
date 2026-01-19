@@ -12,6 +12,7 @@ import WordCard from "../../components/WordCard";
 export default function MyWordsPage() {
     const [view, setView] = useState<'list' | 'form'>('list');
     const [userWords, setUserWords] = useState<any[]>([]);
+    const [filteredWords, setFilteredWords] = useState<any[]>([]);
     const [loadingWords, setLoadingWords] = useState(true);
 
     // Form states
@@ -19,6 +20,8 @@ export default function MyWordsPage() {
     const [trWord, setTrWord] = useState("");
     const [loading, setLoading] = useState(false);
     const [categories, setCategories] = useState<any[]>([]);
+    const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+    const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
 
     const { user } = useAuth();
 
@@ -34,7 +37,8 @@ export default function MyWordsPage() {
             const wordsData = await Promise.all(wordsPromises);
 
             // Null olmayanları filtrele (silinmiş olabilir)
-            setUserWords(wordsData.filter(w => w !== null));
+            const validWords = wordsData.filter(w => w !== null);
+            setUserWords(validWords);
         } catch (error) {
             console.error("Error fetching user words:", error);
         } finally {
@@ -48,7 +52,7 @@ export default function MyWordsPage() {
             if (!user) return;
             try {
                 const cats = await getAllCategories();
-                setCategories(cats);
+                setCategories(cats.sort((a: any, b: any) => a.name.localeCompare(b.name)));
             } catch (err) {
                 console.error("Failed to load categories:", err);
             }
@@ -59,6 +63,32 @@ export default function MyWordsPage() {
             fetchUserWords();
         }
     }, [user]);
+
+    // Filter and Sort Effect
+    useEffect(() => {
+        let result = [...userWords];
+
+        // Filter by Category
+        if (selectedCategory) {
+            result = result.filter(word =>
+                (word.eng_categoryId === selectedCategory) ||
+                (word.tr_categoryId === selectedCategory)
+            );
+        }
+
+        // Sort
+        result.sort((a, b) => {
+            const valA = a.eng.toLowerCase();
+            const valB = b.eng.toLowerCase();
+            if (sortOrder === 'asc') {
+                return valA.localeCompare(valB);
+            } else {
+                return valB.localeCompare(valA);
+            }
+        });
+
+        setFilteredWords(result);
+    }, [userWords, selectedCategory, sortOrder]);
 
     const handleSave = async () => {
         if (!engWord || !trWord) {
@@ -71,6 +101,7 @@ export default function MyWordsPage() {
             const engChar = engWord.charAt(0).toUpperCase();
             const trChar = trWord.charAt(0).toLocaleUpperCase('tr-TR');
 
+            // ... (rest of handleSave logic)
             if (categories.length === 0) {
                 alert("Kategoriler yüklenemedi. Lütfen sayfayı yenileyin.");
                 setLoading(false);
@@ -122,28 +153,66 @@ export default function MyWordsPage() {
             <div className="min-h-screen bg-[#F9FAFB] flex flex-col items-center p-4 pt-24">
 
                 {view === 'list' && (
-                    <div className="w-full max-w-4xl">
-                        <div className="flex justify-between items-center mb-8">
+                    <div className="w-full max-w-6xl">
+                        <div className="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
                             <div>
                                 <h1 className="text-3xl font-bold text-slate-900">Kelimelerim</h1>
                                 <p className="text-slate-500 mt-1">Öğrendiğin ve eklediğin tüm kelimeler burada.</p>
                             </div>
-                            <button
-                                onClick={() => setView('form')}
-                                className="flex items-center gap-2 px-10 py-3 bg-[#3FB8F5] hover:bg-[#34a3da] text-white font-medium rounded-full transition-colors shadow-[0_4px_14px_0_rgba(63,184,245,0.39)] active:scale-95 transform duration-100 disabled:opacity-70 disabled:cursor-not-allowed"
-                            >
-                                <Plus className="w-5 h-5" />
-                                Yeni Kelime Ekle
-                            </button>
+                            <div className="flex items-center gap-3">
+                                <button
+                                    onClick={() => setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')}
+                                    className="px-4 py-2 bg-white border border-slate-200 rounded-full text-slate-600 font-medium hover:bg-slate-50 transition-colors shadow-sm flex items-center gap-2"
+                                >
+                                    <span className="text-xs font-bold text-slate-400">SIRALA</span>
+                                    {sortOrder === 'asc' ? 'A-Z' : 'Z-A'}
+                                </button>
+                                <button
+                                    onClick={() => setView('form')}
+                                    className="flex items-center gap-2 px-6 py-2 bg-[#3FB8F5] hover:bg-[#34a3da] text-white font-medium rounded-full transition-colors shadow-md active:scale-95 transform duration-100 disabled:opacity-70 disabled:cursor-not-allowed text-sm"
+                                >
+                                    <Plus className="w-4 h-4" />
+                                    Yeni Kelime
+                                </button>
+                            </div>
                         </div>
+
+                        {/* Category Filter */}
+                        {!loadingWords && categories.length > 0 && userWords.length > 0 && (
+                            <div className="mb-8 overflow-x-auto pb-2 -mx-4 px-4 md:mx-0 md:px-0">
+                                <div className="flex gap-2 min-w-min">
+                                    <button
+                                        onClick={() => setSelectedCategory(null)}
+                                        className={`px-4 py-2 rounded-full text-sm font-bold transition-all whitespace-nowrap ${selectedCategory === null
+                                            ? "bg-[#3FB8F5] text-white shadow-md shadow-blue-200"
+                                            : "bg-white text-slate-500 border border-slate-200 hover:border-blue-300 hover:text-blue-500"
+                                            }`}
+                                    >
+                                        Tümü
+                                    </button>
+                                    {categories.map((cat) => (
+                                        <button
+                                            key={cat.id}
+                                            onClick={() => setSelectedCategory(cat.id)}
+                                            className={`w-10 h-10 rounded-full text-sm font-bold flex items-center justify-center transition-all flex-shrink-0 ${selectedCategory === cat.id
+                                                ? "bg-[#3FB8F5] text-white shadow-md shadow-blue-200"
+                                                : "bg-white text-slate-500 border border-slate-200 hover:border-blue-300 hover:text-blue-500"
+                                                }`}
+                                        >
+                                            {cat.name}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
 
                         {loadingWords ? (
                             <div className="flex justify-center py-12">
                                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
                             </div>
-                        ) : userWords.length > 0 ? (
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                                {userWords.map((word) => (
+                        ) : filteredWords.length > 0 ? (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                                {filteredWords.map((word) => (
                                     <WordCard key={word.id} word={word} />
                                 ))}
                             </div>
@@ -152,14 +221,29 @@ export default function MyWordsPage() {
                                 <div className="bg-blue-50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
                                     <Languages className="w-8 h-8 text-blue-500" />
                                 </div>
-                                <h3 className="text-xl font-bold text-slate-900 mb-2">Henüz kelime eklemedin!</h3>
-                                <p className="text-slate-500 mb-6">Kelime hazineni geliştirmek için hemen ilk kelimeni ekle.</p>
-                                <button
-                                    onClick={() => setView('form')}
-                                    className="text-blue-600 font-medium hover:underline"
-                                >
-                                    Şimdi Ekle &rarr;
-                                </button>
+                                <h3 className="text-xl font-bold text-slate-900 mb-2">
+                                    {selectedCategory
+                                        ? `${categories.find(c => c.id === selectedCategory)?.name || selectedCategory} kategorisinde kelime yok!`
+                                        : "Henüz kelime eklemedin!"}
+                                </h3>
+                                <p className="text-slate-500 mb-6">
+                                    {selectedCategory ? "Başka bir kategori seçmeyi dene." : "Kelime hazineni geliştirmek için hemen ilk kelimeni ekle."}
+                                </p>
+                                {selectedCategory ? (
+                                    <button
+                                        onClick={() => setSelectedCategory(null)}
+                                        className="text-blue-600 font-medium hover:underline"
+                                    >
+                                        Tümünü Göster
+                                    </button>
+                                ) : (
+                                    <button
+                                        onClick={() => setView('form')}
+                                        className="text-blue-600 font-medium hover:underline"
+                                    >
+                                        Şimdi Ekle &rarr;
+                                    </button>
+                                )}
                             </div>
                         )}
                     </div>
