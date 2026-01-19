@@ -8,6 +8,7 @@ import { useAuth } from "@/context/AuthContext";
 import WordCard from "@/components/WordCard";
 import AuthGuard from "@/components/AuthGuard";
 import { BookOpen, Layers } from "lucide-react";
+import { useLanguage } from "@/context/LanguageContext";
 
 export default function PoolPage() {
     const [words, setWords] = useState<any[]>([]);
@@ -18,9 +19,10 @@ export default function PoolPage() {
     const [categories, setCategories] = useState<any[]>([]);
     const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
     const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
-    const [languageMode, setLanguageMode] = useState<'eng' | 'tr'>('eng');
+    const [languageMode, setLanguageMode] = useState<'eng' | 'tr'>('eng'); // Local state for content language
 
     const { user } = useAuth();
+    const { t } = useLanguage(); // Use 't' for UI labels, but 'languageMode' for content
 
     // Verileri çek
     useEffect(() => {
@@ -76,7 +78,6 @@ export default function PoolPage() {
     }, [words, selectedCategory, sortOrder, languageMode]);
 
     const handleAddToMyWords = async (wordId: string) => {
-        // ... (existing logic)
         if (!user || addingId) return;
 
         setAddingId(wordId);
@@ -103,22 +104,22 @@ export default function PoolPage() {
                 <div className="w-full max-w-6xl">
                     <div className="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
                         <div>
-                            <h1 className="text-3xl font-bold text-slate-900">Kelime Havuzu</h1>
-                            <p className="text-slate-500 mt-1">Platformdaki tüm kelimeleri keşfet ve listene ekle.</p>
+                            <h1 className="text-3xl font-bold text-slate-900">{t.pool.title}</h1>
+                            <p className="text-slate-500 mt-1">{t.pool.subtitle}</p>
                         </div>
                         <div className="flex items-center gap-3">
                             <button
                                 onClick={() => setLanguageMode(prev => prev === 'eng' ? 'tr' : 'eng')}
                                 className="px-4 py-2 bg-white border border-slate-200 rounded-full text-slate-600 font-medium hover:bg-slate-50 transition-colors shadow-sm flex items-center gap-2"
                             >
-                                <span className="text-xs font-bold text-slate-400">DİL</span>
-                                {languageMode === 'eng' ? 'İngilizce' : 'Türkçe'}
+                                <span className="text-xs font-bold text-slate-400">{t.common.lang}</span>
+                                {languageMode === 'eng' ? t.common.english : t.common.turkish}
                             </button>
                             <button
                                 onClick={() => setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')}
                                 className="px-4 py-2 bg-white border border-slate-200 rounded-full text-slate-600 font-medium hover:bg-slate-50 transition-colors shadow-sm flex items-center gap-2"
                             >
-                                <span className="text-xs font-bold text-slate-400">SIRALA</span>
+                                <span className="text-xs font-bold text-slate-400">{t.common.sort}</span>
                                 {sortOrder === 'asc' ? 'A-Z' : 'Z-A'}
                             </button>
                             <div className="bg-blue-50 p-3 rounded-full hidden md:block">
@@ -138,7 +139,7 @@ export default function PoolPage() {
                                         : "bg-white text-slate-500 border border-slate-200 hover:border-blue-300 hover:text-blue-500"
                                         }`}
                                 >
-                                    Tümü
+                                    {t.pool.showAll}
                                 </button>
                                 {categories.map((cat) => (
                                     <button
@@ -179,18 +180,18 @@ export default function PoolPage() {
                             </div>
                             <h3 className="text-xl font-bold text-slate-900 mb-2">
                                 {selectedCategory
-                                    ? `${categories.find(c => c.id === selectedCategory)?.name || selectedCategory} kategorisinde kelime yok!`
-                                    : "Havuz Boş!"}
+                                    ? `${categories.find(c => c.id === selectedCategory)?.name || selectedCategory} ${t.pool.emptyCategory}`
+                                    : t.pool.emptyPool}
                             </h3>
                             <p className="text-slate-500 mb-6">
-                                {selectedCategory ? "Başka bir kategori seçmeyi dene." : "Henüz hiç kelime eklenmemiş."}
+                                {selectedCategory ? t.pool.tryCategory : t.pool.emptyPoolDesc}
                             </p>
                             {selectedCategory && (
                                 <button
                                     onClick={() => setSelectedCategory(null)}
                                     className="text-blue-600 font-medium hover:underline"
                                 >
-                                    Tümünü Göster
+                                    {t.pool.showAll}
                                 </button>
                             )}
                         </div>

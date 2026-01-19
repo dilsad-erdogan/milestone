@@ -9,6 +9,8 @@ import AuthGuard from "@/components/AuthGuard";
 import { useAuth } from "@/context/AuthContext";
 import WordCard from "../../components/WordCard";
 
+import { useLanguage } from "@/context/LanguageContext";
+
 export default function MyWordsPage() {
     const [view, setView] = useState<'list' | 'form'>('list');
     const [userWords, setUserWords] = useState<any[]>([]);
@@ -22,9 +24,10 @@ export default function MyWordsPage() {
     const [categories, setCategories] = useState<any[]>([]);
     const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
     const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
-    const [languageMode, setLanguageMode] = useState<'eng' | 'tr'>('eng');
+    const [languageMode, setLanguageMode] = useState<'eng' | 'tr'>('eng'); // Local state for content language
 
     const { user } = useAuth();
+    const { t } = useLanguage(); // Use 't' for UI labels
 
     // Kullanıcının kelimelerini çek
     const fetchUserWords = async () => {
@@ -92,8 +95,9 @@ export default function MyWordsPage() {
     }, [userWords, selectedCategory, sortOrder, languageMode]);
 
     const handleSave = async () => {
+        // ... (existing logic)
         if (!engWord || !trWord) {
-            alert("Lütfen her iki kelimeyi de giriniz.");
+            alert(t.myWords.validationMessage);
             return;
         }
 
@@ -102,7 +106,6 @@ export default function MyWordsPage() {
             const engChar = engWord.charAt(0).toUpperCase();
             const trChar = trWord.charAt(0).toLocaleUpperCase('tr-TR');
 
-            // ... (rest of handleSave logic)
             if (categories.length === 0) {
                 alert("Kategoriler yüklenemedi. Lütfen sayfayı yenileyin.");
                 setLoading(false);
@@ -136,14 +139,14 @@ export default function MyWordsPage() {
                 await addWordToUser(user.uid, newWord.id);
             }
 
-            alert("Kelime başarıyla eklendi!");
+            alert(t.myWords.successMessage);
             setEngWord("");
             setTrWord("");
             setView('list'); // Listeye dön
             fetchUserWords(); // Listeyi güncelle
         } catch (error) {
             console.error("Error saving word:", error);
-            alert("Bir hata oluştu.");
+            alert(t.myWords.errorMessage);
         } finally {
             setLoading(false);
         }
@@ -157,22 +160,22 @@ export default function MyWordsPage() {
                     <div className="w-full max-w-6xl">
                         <div className="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
                             <div>
-                                <h1 className="text-3xl font-bold text-slate-900">Kelimelerim</h1>
-                                <p className="text-slate-500 mt-1">Öğrendiğin ve eklediğin tüm kelimeler burada.</p>
+                                <h1 className="text-3xl font-bold text-slate-900">{t.myWords.title}</h1>
+                                <p className="text-slate-500 mt-1">{t.myWords.subtitle}</p>
                             </div>
                             <div className="flex items-center gap-3">
                                 <button
                                     onClick={() => setLanguageMode(prev => prev === 'eng' ? 'tr' : 'eng')}
                                     className="px-4 py-2 bg-white border border-slate-200 rounded-full text-slate-600 font-medium hover:bg-slate-50 transition-colors shadow-sm flex items-center gap-2"
                                 >
-                                    <span className="text-xs font-bold text-slate-400">DİL</span>
-                                    {languageMode === 'eng' ? 'İngilizce' : 'Türkçe'}
+                                    <span className="text-xs font-bold text-slate-400">{t.common.lang}</span>
+                                    {languageMode === 'eng' ? t.common.english : t.common.turkish}
                                 </button>
                                 <button
                                     onClick={() => setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')}
                                     className="px-4 py-2 bg-white border border-slate-200 rounded-full text-slate-600 font-medium hover:bg-slate-50 transition-colors shadow-sm flex items-center gap-2"
                                 >
-                                    <span className="text-xs font-bold text-slate-400">SIRALA</span>
+                                    <span className="text-xs font-bold text-slate-400">{t.common.sort}</span>
                                     {sortOrder === 'asc' ? 'A-Z' : 'Z-A'}
                                 </button>
                                 <button
@@ -180,7 +183,7 @@ export default function MyWordsPage() {
                                     className="flex items-center gap-2 px-6 py-2 bg-[#3FB8F5] hover:bg-[#34a3da] text-white font-medium rounded-full transition-colors shadow-md active:scale-95 transform duration-100 disabled:opacity-70 disabled:cursor-not-allowed text-sm"
                                 >
                                     <Plus className="w-4 h-4" />
-                                    Yeni Kelime
+                                    {t.myWords.newWord}
                                 </button>
                             </div>
                         </div>
@@ -196,7 +199,7 @@ export default function MyWordsPage() {
                                             : "bg-white text-slate-500 border border-slate-200 hover:border-blue-300 hover:text-blue-500"
                                             }`}
                                     >
-                                        Tümü
+                                        {t.pool.showAll}
                                     </button>
                                     {categories.map((cat) => (
                                         <button
@@ -235,25 +238,25 @@ export default function MyWordsPage() {
                                 </div>
                                 <h3 className="text-xl font-bold text-slate-900 mb-2">
                                     {selectedCategory
-                                        ? `${categories.find(c => c.id === selectedCategory)?.name || selectedCategory} kategorisinde kelime yok!`
-                                        : "Henüz kelime eklemedin!"}
+                                        ? `${categories.find(c => c.id === selectedCategory)?.name || selectedCategory} ${t.pool.emptyCategory}`
+                                        : t.myWords.emptyList}
                                 </h3>
                                 <p className="text-slate-500 mb-6">
-                                    {selectedCategory ? "Başka bir kategori seçmeyi dene." : "Kelime hazineni geliştirmek için hemen ilk kelimeni ekle."}
+                                    {selectedCategory ? t.pool.tryCategory : t.myWords.emptyListDesc}
                                 </p>
                                 {selectedCategory ? (
                                     <button
                                         onClick={() => setSelectedCategory(null)}
                                         className="text-blue-600 font-medium hover:underline"
                                     >
-                                        Tümünü Göster
+                                        {t.pool.showAll}
                                     </button>
                                 ) : (
                                     <button
                                         onClick={() => setView('form')}
                                         className="text-blue-600 font-medium hover:underline"
                                     >
-                                        Şimdi Ekle &rarr;
+                                        {t.myWords.addNow} &rarr;
                                     </button>
                                 )}
                             </div>
@@ -268,18 +271,18 @@ export default function MyWordsPage() {
                             className="flex items-center gap-2 text-slate-500 hover:text-slate-800 mb-6 transition-colors"
                         >
                             <ArrowLeft className="w-5 h-5" />
-                            Listeye Dön
+                            {t.myWords.backToList}
                         </button>
 
-                        <h1 className="text-3xl font-bold text-[#111827] mb-2">Yeni Kelime Ekle</h1>
-                        <p className="text-gray-500 mb-8">Kelime hazineni genişletmek için yeni bir giriş yap.</p>
+                        <h1 className="text-3xl font-bold text-[#111827] mb-2">{t.myWords.addNewTitle}</h1>
+                        <p className="text-gray-500 mb-8">{t.myWords.addNewDesc}</p>
 
                         <div className="bg-white p-8 rounded-3xl shadow-sm border border-gray-100">
 
                             {/* İngilizce Kelime */}
                             <div className="mb-6">
                                 <label className="block text-xs font-bold text-gray-400 uppercase mb-3 tracking-wider">
-                                    İNGİLİZCE KELİME
+                                    {t.myWords.engWordLabel}
                                 </label>
                                 <div className="relative">
                                     <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
@@ -290,7 +293,7 @@ export default function MyWordsPage() {
                                         value={engWord}
                                         onChange={(e) => setEngWord(e.target.value)}
                                         className="block w-full pl-12 pr-4 py-4 bg-[#F9FAFB] border border-gray-200 rounded-xl text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400 transition-all font-medium"
-                                        placeholder="Örn: Book"
+                                        placeholder={t.myWords.engWordPlaceholder}
                                     />
                                 </div>
                             </div>
@@ -298,7 +301,7 @@ export default function MyWordsPage() {
                             {/* Türkçe Karşılık */}
                             <div className="mb-8">
                                 <label className="block text-xs font-bold text-gray-400 uppercase mb-3 tracking-wider">
-                                    TÜRKÇE KARŞILIĞI
+                                    {t.myWords.trWordLabel}
                                 </label>
                                 <div className="relative">
                                     <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
@@ -309,7 +312,7 @@ export default function MyWordsPage() {
                                         value={trWord}
                                         onChange={(e) => setTrWord(e.target.value)}
                                         className="block w-full pl-12 pr-4 py-4 bg-[#F9FAFB] border border-gray-200 rounded-xl text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400 transition-all font-medium"
-                                        placeholder="Örn: Kitap"
+                                        placeholder={t.myWords.trWordPlaceholder}
                                     />
                                 </div>
                             </div>
@@ -320,7 +323,7 @@ export default function MyWordsPage() {
                                 disabled={loading}
                                 className="w-full bg-[#3FB8F5] hover:bg-[#34a3da] text-white font-bold py-4 rounded-xl transition-colors shadow-[0_4px_14px_0_rgba(63,184,245,0.39)] active:scale-[0.98] transform duration-100 disabled:opacity-70 disabled:cursor-not-allowed"
                             >
-                                {loading ? "KAYDEDİLİYOR..." : "KELİMEYİ KAYDET"}
+                                {loading ? t.myWords.savingButton : t.myWords.saveButton}
                             </button>
                         </div>
                     </div>

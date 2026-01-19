@@ -6,8 +6,11 @@ import { useAuth } from "@/context/AuthContext";
 import { getUserQuizStats } from "@/firebase/quizzes";
 import { BookOpen, Trophy, Activity, Target } from "lucide-react";
 
+import { useLanguage } from "@/context/LanguageContext";
+
 export default function Home() {
   const { user } = useAuth();
+  const { t } = useLanguage();
   const [stats, setStats] = useState({
     totalQuizzes: 0,
     averageScore: 0,
@@ -50,10 +53,10 @@ export default function Home() {
 
           <header className="mb-10">
             <h1 className="text-3xl font-bold text-slate-900">
-              Hoş geldin, <span className="text-[#3FB8F5]">{user?.displayName || "Kullanıcı"}</span>!
+              {t.home.welcome} <span className="text-[#3FB8F5]">{user?.displayName || "Kullanıcı"}</span>!
             </h1>
             <p className="text-slate-500 mt-2">
-              Bugün öğrenme yolculuğunda neler yapacaksın?
+              {t.home.welcomeSubtitle}
             </p>
           </header>
 
@@ -65,28 +68,28 @@ export default function Home() {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-12 text-black">
               <StatCard
                 icon={BookOpen}
-                title="Toplam Quiz"
+                title={t.home.totalQuizzes}
                 value={stats.totalQuizzes}
                 iconColor="text-blue-500"
                 bgColor="bg-blue-50"
               />
               <StatCard
                 icon={Activity}
-                title="Ortalama Puan"
+                title={t.home.averageScore}
                 value={`%${stats.averageScore}`}
                 iconColor="text-green-500"
                 bgColor="bg-green-50"
               />
               <StatCard
                 icon={Trophy}
-                title="En İyi Skor"
+                title={t.home.bestScore}
                 value={stats.bestScore}
                 iconColor="text-yellow-500"
                 bgColor="bg-yellow-50"
               />
               <StatCard
                 icon={Target}
-                title="Çözülen Soru"
+                title={t.home.questionsSolved}
                 value={stats.totalQuestionsSolved}
                 iconColor="text-purple-500"
                 bgColor="bg-purple-50"
@@ -98,17 +101,17 @@ export default function Home() {
             <div className="mb-4 inline-flex items-center justify-center w-16 h-16 rounded-full bg-blue-50 mb-6">
               <BookOpen className="w-8 h-8 text-[#3FB8F5]" />
             </div>
-            <h2 className="text-2xl font-bold text-slate-900 mb-2">Quizlere Başla</h2>
+            <h2 className="text-2xl font-bold text-slate-900 mb-2">{t.home.startQuizTitle}</h2>
             <p className="text-slate-500 max-w-md mx-auto mb-8">
-              Kelime bilgini test etmek ve kendini geliştirmek için yeni bir quiz oluştur.
+              {t.home.startQuizDesc}
             </p>
             <button className="px-8 py-3 bg-[#3FB8F5] hover:bg-[#34a3da] text-white font-medium rounded-full transition-colors shadow-lg shadow-blue-200">
-              Hemen Başla
+              {t.home.startQuizButton}
             </button>
           </div>
 
         </div>
       </div>
-    </AuthGuard>
+    </AuthGuard >
   );
 }

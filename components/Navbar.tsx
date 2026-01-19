@@ -3,11 +3,13 @@
 import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
 import { logout } from "@/firebase/auth";
-import { PlusCircle, LogOut, BookOpen } from "lucide-react";
+import { PlusCircle, LogOut, BookOpen, Globe } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useLanguage } from "@/context/LanguageContext";
 
 export default function Navbar() {
     const { user, loading } = useAuth();
+    const { t, language, setLanguage } = useLanguage();
     const router = useRouter();
 
     if (loading || !user) return null;
@@ -19,6 +21,10 @@ export default function Navbar() {
         } catch (error) {
             console.error("Logout error:", error);
         }
+    };
+
+    const toggleLanguage = () => {
+        setLanguage(language === 'eng' ? 'tr' : 'eng');
     };
 
     return (
@@ -42,7 +48,7 @@ export default function Navbar() {
                             className="flex items-center justify-center gap-2 px-4 h-10 text-sm font-semibold text-slate-600 hover:text-[#3FB8F5] hover:bg-[#3FB8F5]/20 rounded-full transition-all active:scale-95"
                         >
                             <div className="p-1"> <BookOpen className="h-4 w-4" /> </div>
-                            <span className="hidden sm:inline pt-[2px]">Havuz</span>
+                            <span className="hidden sm:inline pt-[2px]">{t.navbar.pool}</span>
                         </Link>
 
                         <Link
@@ -50,8 +56,16 @@ export default function Navbar() {
                             className="flex items-center justify-center gap-2 px-4 h-10 text-sm font-semibold text-slate-600 hover:text-[#3FB8F5] hover:bg-[#3FB8F5]/20 rounded-full transition-all active:scale-95"
                         >
                             <PlusCircle className="h-4 w-4" />
-                            <span className="hidden sm:inline pt-[2px]">Kelimelerim</span>
+                            <span className="hidden sm:inline pt-[2px]">{t.navbar.myWords}</span>
                         </Link>
+
+                        <button
+                            onClick={toggleLanguage}
+                            className="flex items-center justify-center gap-2 px-4 h-10 text-sm font-semibold text-slate-600 hover:text-[#3FB8F5] hover:bg-[#3FB8F5]/20 rounded-full transition-all active:scale-95"
+                        >
+                            <Globe className="h-4 w-4" />
+                            <span className="hidden sm:inline pt-[2px]">{language === 'eng' ? 'TR' : 'EN'}</span>
+                        </button>
 
                         <div className="h-6 w-[1px] bg-gray-200 hidden sm:block"></div>
 
@@ -60,7 +74,7 @@ export default function Navbar() {
                             className="flex items-center justify-center gap-2 px-4 h-10 text-sm font-semibold text-slate-600 hover:text-red-600 hover:bg-red-50 rounded-full transition-all active:scale-95"
                         >
                             <LogOut className="h-4 w-4" />
-                            <span className="hidden sm:inline pt-[2px]">Çıkış Yap</span>
+                            <span className="hidden sm:inline pt-[2px]">{t.navbar.logout}</span>
                         </button>
                     </div>
                 </div>
