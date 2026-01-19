@@ -7,10 +7,15 @@ interface WordCardProps {
     word: any;
     onAdd?: (wordId: string) => void;
     isAdded?: boolean;
+    primaryLanguage?: 'eng' | 'tr';
 }
 
-export default function WordCard({ word, onAdd, isAdded = false }: WordCardProps) {
+export default function WordCard({ word, onAdd, isAdded = false, primaryLanguage = 'eng' }: WordCardProps) {
     const [isFlipped, setIsFlipped] = useState(false);
+
+    // Determine content based on primary language
+    const frontContent = primaryLanguage === 'eng' ? word.eng : word.tr;
+    const backContent = primaryLanguage === 'eng' ? word.tr : word.eng;
 
     return (
         <div
@@ -19,9 +24,9 @@ export default function WordCard({ word, onAdd, isAdded = false }: WordCardProps
         >
             <div className={`relative w-full h-full transition-all duration-500 transform-style-3d ${isFlipped ? 'rotate-y-180' : ''}`}>
 
-                {/* Ön Yüz - İngilizce */}
+                {/* Ön Yüz */}
                 <div className="absolute w-full h-full backface-hidden bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex items-center justify-center">
-                    <span className="text-xl font-bold text-[#3FB8F5]">{word.eng}</span>
+                    <span className="text-xl font-bold text-[#3FB8F5]">{frontContent}</span>
 
                     {onAdd && (
                         <button
@@ -40,9 +45,9 @@ export default function WordCard({ word, onAdd, isAdded = false }: WordCardProps
                     )}
                 </div>
 
-                {/* Arka Yüz - Türkçe */}
+                {/* Arka Yüz */}
                 <div className="absolute w-full h-full backface-hidden rotate-y-180 bg-[#3FB8F5] p-6 rounded-2xl shadow-sm border border-[#3FB8F5] flex items-center justify-center text-white">
-                    <span className="text-xl font-bold">{word.tr}</span>
+                    <span className="text-xl font-bold">{backContent}</span>
                 </div>
             </div>
         </div>

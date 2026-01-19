@@ -18,6 +18,7 @@ export default function PoolPage() {
     const [categories, setCategories] = useState<any[]>([]);
     const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
     const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+    const [languageMode, setLanguageMode] = useState<'eng' | 'tr'>('eng');
 
     const { user } = useAuth();
 
@@ -55,26 +56,27 @@ export default function PoolPage() {
         // Filter by Category
         if (selectedCategory) {
             result = result.filter(word =>
-                (word.eng_categoryId === selectedCategory) ||
-                (word.tr_categoryId === selectedCategory)
+                (languageMode === 'eng' ? word.eng_categoryId : word.tr_categoryId) === selectedCategory
             );
         }
 
         // Sort
         result.sort((a, b) => {
-            const valA = a.eng.toLowerCase();
-            const valB = b.eng.toLowerCase();
+            const valA = (languageMode === 'eng' ? a.eng : a.tr).toLowerCase();
+            const valB = (languageMode === 'eng' ? b.eng : b.tr).toLowerCase();
+
             if (sortOrder === 'asc') {
-                return valA.localeCompare(valB);
+                return valA.localeCompare(valB, languageMode === 'tr' ? 'tr' : 'en');
             } else {
-                return valB.localeCompare(valA);
+                return valB.localeCompare(valA, languageMode === 'tr' ? 'tr' : 'en');
             }
         });
 
         setFilteredWords(result);
-    }, [words, selectedCategory, sortOrder]);
+    }, [words, selectedCategory, sortOrder, languageMode]);
 
     const handleAddToMyWords = async (wordId: string) => {
+        // ... (existing logic)
         if (!user || addingId) return;
 
         setAddingId(wordId);
@@ -105,6 +107,13 @@ export default function PoolPage() {
                             <p className="text-slate-500 mt-1">Platformdaki tüm kelimeleri keşfet ve listene ekle.</p>
                         </div>
                         <div className="flex items-center gap-3">
+                            <button
+                                onClick={() => setLanguageMode(prev => prev === 'eng' ? 'tr' : 'eng')}
+                                className="px-4 py-2 bg-white border border-slate-200 rounded-full text-slate-600 font-medium hover:bg-slate-50 transition-colors shadow-sm flex items-center gap-2"
+                            >
+                                <span className="text-xs font-bold text-slate-400">DİL</span>
+                                {languageMode === 'eng' ? 'İngilizce' : 'Türkçe'}
+                            </button>
                             <button
                                 onClick={() => setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')}
                                 className="px-4 py-2 bg-white border border-slate-200 rounded-full text-slate-600 font-medium hover:bg-slate-50 transition-colors shadow-sm flex items-center gap-2"
@@ -159,6 +168,7 @@ export default function PoolPage() {
                                     word={word}
                                     onAdd={handleAddToMyWords}
                                     isAdded={userWordIds.has(word.id)}
+                                    primaryLanguage={languageMode}
                                 />
                             ))}
                         </div>

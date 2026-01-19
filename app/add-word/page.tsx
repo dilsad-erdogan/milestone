@@ -22,6 +22,7 @@ export default function MyWordsPage() {
     const [categories, setCategories] = useState<any[]>([]);
     const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
     const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+    const [languageMode, setLanguageMode] = useState<'eng' | 'tr'>('eng');
 
     const { user } = useAuth();
 
@@ -71,24 +72,24 @@ export default function MyWordsPage() {
         // Filter by Category
         if (selectedCategory) {
             result = result.filter(word =>
-                (word.eng_categoryId === selectedCategory) ||
-                (word.tr_categoryId === selectedCategory)
+                (languageMode === 'eng' ? word.eng_categoryId : word.tr_categoryId) === selectedCategory
             );
         }
 
         // Sort
         result.sort((a, b) => {
-            const valA = a.eng.toLowerCase();
-            const valB = b.eng.toLowerCase();
+            const valA = (languageMode === 'eng' ? a.eng : a.tr).toLowerCase();
+            const valB = (languageMode === 'eng' ? b.eng : b.tr).toLowerCase();
+
             if (sortOrder === 'asc') {
-                return valA.localeCompare(valB);
+                return valA.localeCompare(valB, languageMode === 'tr' ? 'tr' : 'en');
             } else {
-                return valB.localeCompare(valA);
+                return valB.localeCompare(valA, languageMode === 'tr' ? 'tr' : 'en');
             }
         });
 
         setFilteredWords(result);
-    }, [userWords, selectedCategory, sortOrder]);
+    }, [userWords, selectedCategory, sortOrder, languageMode]);
 
     const handleSave = async () => {
         if (!engWord || !trWord) {
@@ -161,6 +162,13 @@ export default function MyWordsPage() {
                             </div>
                             <div className="flex items-center gap-3">
                                 <button
+                                    onClick={() => setLanguageMode(prev => prev === 'eng' ? 'tr' : 'eng')}
+                                    className="px-4 py-2 bg-white border border-slate-200 rounded-full text-slate-600 font-medium hover:bg-slate-50 transition-colors shadow-sm flex items-center gap-2"
+                                >
+                                    <span className="text-xs font-bold text-slate-400">DİL</span>
+                                    {languageMode === 'eng' ? 'İngilizce' : 'Türkçe'}
+                                </button>
+                                <button
                                     onClick={() => setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')}
                                     className="px-4 py-2 bg-white border border-slate-200 rounded-full text-slate-600 font-medium hover:bg-slate-50 transition-colors shadow-sm flex items-center gap-2"
                                 >
@@ -213,7 +221,11 @@ export default function MyWordsPage() {
                         ) : filteredWords.length > 0 ? (
                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                                 {filteredWords.map((word) => (
-                                    <WordCard key={word.id} word={word} />
+                                    <WordCard
+                                        key={word.id}
+                                        word={word}
+                                        primaryLanguage={languageMode}
+                                    />
                                 ))}
                             </div>
                         ) : (
