@@ -2,12 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { Languages, Globe, Plus, ArrowLeft } from "lucide-react";
-import { getAllCategories } from "../../firebase/categories";
-import { addWord, getWordById } from "../../firebase/words";
-import { addWordToUser, getUserWords } from "../../firebase/accounts";
+import { getAllCategories } from "@/firebase/categories";
+import { addWord, getWordById } from "@/firebase/words";
+import { addWordToUser, getUserWords } from "@/firebase/accounts";
 import AuthGuard from "@/components/AuthGuard";
 import { useAuth } from "@/context/AuthContext";
-import WordCard from "../../components/WordCard";
+import WordCard from "@/components/WordCard";
 
 import { useLanguage } from "@/context/LanguageContext";
 
@@ -35,8 +35,6 @@ export default function MyWordsPage() {
         setLoadingWords(true);
         try {
             const wordIds = await getUserWords(user.uid);
-            console.log("User word IDs:", wordIds);
-
             const wordsPromises = wordIds.map((id: string) => getWordById(id));
             const wordsData = await Promise.all(wordsPromises);
 
@@ -95,7 +93,6 @@ export default function MyWordsPage() {
     }, [userWords, selectedCategory, sortOrder, languageMode]);
 
     const handleSave = async () => {
-        // ... (existing logic)
         if (!engWord || !trWord) {
             alert(t.myWords.validationMessage);
             return;
@@ -103,7 +100,7 @@ export default function MyWordsPage() {
 
         setLoading(true);
         try {
-            const engChar = engWord.charAt(0).toUpperCase();
+            const engChar = engWord.charAt(0).toLocaleUpperCase('tr-TR');
             const trChar = trWord.charAt(0).toLocaleUpperCase('tr-TR');
 
             if (categories.length === 0) {
@@ -127,8 +124,8 @@ export default function MyWordsPage() {
             const trId = trCategory ? trCategory.id : trChar;
 
             const wordData = {
-                eng: engWord,
-                tr: trWord,
+                eng: engWord.trim().toLocaleUpperCase('tr-TR'),
+                tr: trWord.trim().toLocaleUpperCase('tr-TR'),
                 eng_categoryId: engId,
                 tr_categoryId: trId
             };
@@ -291,7 +288,7 @@ export default function MyWordsPage() {
                                     <input
                                         type="text"
                                         value={engWord}
-                                        onChange={(e) => setEngWord(e.target.value)}
+                                        onChange={(e) => setEngWord(e.target.value.toLocaleUpperCase('tr-TR'))}
                                         className="block w-full pl-12 pr-4 py-4 bg-[#F9FAFB] border border-gray-200 rounded-xl text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400 transition-all font-medium"
                                         placeholder={t.myWords.engWordPlaceholder}
                                     />
@@ -310,7 +307,7 @@ export default function MyWordsPage() {
                                     <input
                                         type="text"
                                         value={trWord}
-                                        onChange={(e) => setTrWord(e.target.value)}
+                                        onChange={(e) => setTrWord(e.target.value.toLocaleUpperCase('tr-TR'))}
                                         className="block w-full pl-12 pr-4 py-4 bg-[#F9FAFB] border border-gray-200 rounded-xl text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400 transition-all font-medium"
                                         placeholder={t.myWords.trWordPlaceholder}
                                     />
