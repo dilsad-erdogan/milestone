@@ -67,17 +67,52 @@ const removeWordFromUser = async (userId, wordId) => {
     }
 };
 
-const updateUserScore = async (userId, newScore) => {
+const updateUserScore = async (userId, scoreToAdd) => {
     try {
+        console.log(`[Diagnostic] Updating score for user ${userId}. Adding: ${scoreToAdd}`);
         const userDocRef = doc(firestore, "accounts", userId);
+        const userDocSnap = await getDoc(userDocRef);
+        const currentScore = userDocSnap.exists() ? (userDocSnap.data().score || 0) : 0;
+
         await updateDoc(userDocRef, {
-            score: newScore
+            score: currentScore + scoreToAdd
         });
+        console.log(`[Diagnostic] Score updated successfully. New total: ${currentScore + scoreToAdd}`);
         return true;
     } catch (error) {
-        console.error("Error updating user score:", error);
+        console.error("[Diagnostic] Error updating user score:", error);
         throw error;
     }
 };
 
-export { checkAndCreateUser, getUserWords, addWordToUser, removeWordFromUser, updateUserScore };
+const addQuizToUser = async (userId, quizId) => {
+    try {
+        const userDocRef = doc(firestore, "accounts", userId);
+        await updateDoc(userDocRef, {
+            quizs: arrayUnion(quizId)
+        });
+        return true;
+    } catch (error) {
+        console.error("Error adding quiz to user:", error);
+        throw error;
+    }
+};
+
+const getUserAccount = async (userId) => {
+    try {
+        const userDocRef = doc(firestore, "accounts", userId);
+        const userDocSnap = await getDoc(userDocRef);
+
+        if (userDocSnap.exists()) {
+            return userDocSnap.data();
+        } else {
+            console.log("User account not found!");
+            return null;
+        }
+    } catch (error) {
+        console.error("Error fetching user account:", error);
+        throw error;
+    }
+};
+
+export { checkAndCreateUser, getUserWords, addWordToUser, removeWordFromUser, updateUserScore, addQuizToUser, getUserAccount };
