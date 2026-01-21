@@ -5,15 +5,13 @@ import { useParams, useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/context/LanguageContext";
 import AuthGuard from "@/components/AuthGuard";
-import { getAllCategories } from "@/firebase/categories";
 import { getUserWords } from "@/firebase/accounts";
 import { getWordById } from "@/firebase/words";
 import { saveQuizResult } from "@/firebase/quizzes";
 import QuizTimer from "@/components/quiz/QuizTimer";
 import QuizProgress from "@/components/quiz/QuizProgress";
-import { ArrowLeft, ArrowRight, Check, X, Lock } from "lucide-react";
+import { ArrowRight, Check, X } from "lucide-react";
 import confetti from "canvas-confetti";
-
 
 type AnswerStatus = "correct" | "wrong" | "empty" | "locked";
 
@@ -64,11 +62,8 @@ export default function QuizPlayPage() {
         const initQuiz = async () => {
             if (!user) return;
             try {
-                // 1. Get User Words & Categories
-                const [wordIds, allCats] = await Promise.all([
-                    getUserWords(user.uid),
-                    getAllCategories()
-                ]);
+                // 1. Get User Words
+                const wordIds = await getUserWords(user.uid);
 
                 const wordsPromises = wordIds.map((id: string) => getWordById(id));
                 const wordsData = await Promise.all(wordsPromises);
@@ -80,18 +75,7 @@ export default function QuizPlayPage() {
                     return;
                 }
 
-                // 2. Determine Alphabet (Full Turkish Alphabet by default)
-                const TURKISH_ALPHABET = [
-                    'A', 'B', 'C', 'Ç', 'D', 'E', 'F', 'G', 'Ğ', 'H', 'I', 'İ', 'J', 'K', 'L',
-                    'M', 'N', 'O', 'Ö', 'P', 'R', 'S', 'Ş', 'T', 'U', 'Ü', 'V', 'Y', 'Z'
-                ];
-
-                // Merge with Firestore categories if needed, but ensure all letters are present
-                const catNames = allCats.map((cat: any) => cat.name.trim().toLocaleUpperCase('tr-TR'));
-                const targetAlphabet = Array.from(new Set([...TURKISH_ALPHABET, ...catNames]))
-                    .sort((a, b) => a.localeCompare(b, 'tr-TR'));
-
-                // 3. Group Words by Answer Letter
+                // 2. Group Words by Answer Letter
                 const groupedWords: Record<string, any[]> = {};
 
                 validWords.forEach(word => {
@@ -107,6 +91,10 @@ export default function QuizPlayPage() {
                     }
                     groupedWords[letter].push(word);
                 });
+
+                // 3. Determine Alphabet (Only Used Letters)
+                const usedLetters = Object.keys(groupedWords);
+                const targetAlphabet = usedLetters.sort((a, b) => a.localeCompare(b, 'tr-TR'));
 
                 // 4. Generate Questions for each letter in Alphabet
                 const quizQuestions: Question[] = targetAlphabet.map((letter) => {
