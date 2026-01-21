@@ -20,6 +20,7 @@ interface Question {
     letter: string;
     question: string;
     correctAnswer: string;
+    validAnswers: string[]; // Support multiple correct answers
     status: AnswerStatus;
     userAnswer?: string;
     isLocked: boolean;
@@ -34,11 +35,12 @@ export default function QuizPlayPage() {
 
     // State
     const [loading, setLoading] = useState(true);
+    const [loadingMessage, setLoadingMessage] = useState("Quiz hazırlanıyor..."); // New State
     const [questions, setQuestions] = useState<Question[]>([]);
     const [currentIndex, setCurrentIndex] = useState(0);
     const [inputValue, setInputValue] = useState("");
     const [quizFinished, setQuizFinished] = useState(false);
-    const [timeLeft, setTimeLeft] = useState(300); // 5 mins
+    const [timeLeft, setTimeLeft] = useState(1200); // 20 mins
     const [resultSaving, setResultSaving] = useState(false);
 
     // Refs for preventing double submission
@@ -104,11 +106,28 @@ export default function QuizPlayPage() {
                         // Randomly select one word
                         const randomWord = availableWords[Math.floor(Math.random() * availableWords.length)];
 
+                        // FIND ALL VALID ANSWERS
+                        // Search for other words that have the SAME question
+                        const questionText = direction === 'eng-tr' ? randomWord.eng : randomWord.tr;
+                        const validAnswerList = validWords
+                            .filter(w => {
+                                const q = direction === 'eng-tr' ? w.eng : w.tr;
+                                return q?.trim().toLocaleUpperCase('tr-TR') === questionText?.trim().toLocaleUpperCase('tr-TR');
+                            })
+                            .map(w => direction === 'eng-tr' ? w.tr : w.eng);
+
+                        // Ensure the primary answer is included
+                        const primaryAnswer = direction === 'eng-tr' ? randomWord.tr : randomWord.eng;
+                        if (!validAnswerList.includes(primaryAnswer)) {
+                            validAnswerList.push(primaryAnswer);
+                        }
+
                         return {
                             id: randomWord.id,
                             letter: letter,
-                            question: direction === 'eng-tr' ? randomWord.eng : randomWord.tr,
-                            correctAnswer: direction === 'eng-tr' ? randomWord.tr : randomWord.eng,
+                            question: questionText,
+                            correctAnswer: primaryAnswer,
+                            validAnswers: validAnswerList, // All valid translations
                             status: 'empty',
                             isLocked: false
                         };
@@ -119,6 +138,7 @@ export default function QuizPlayPage() {
                             letter: letter,
                             question: '',
                             correctAnswer: '',
+                            validAnswers: [],
                             status: 'locked',
                             isLocked: true
                         };
@@ -131,6 +151,24 @@ export default function QuizPlayPage() {
                 // Find first unlocked question
                 const firstUnlocked = quizQuestions.findIndex(q => !q.isLocked);
                 if (firstUnlocked !== -1) setCurrentIndex(firstUnlocked);
+
+                // Start Fake Loading Sequence
+                const quizT = t.quiz as any;
+                const messages = [
+                    quizT.loading1 || "Kelime havuzun taranıyor...",
+                    quizT.loading2 || "Zorluk seviyesi ayarlanıyor...",
+                    quizT.loading3 || "Sorular hazırlanıyor...",
+                    quizT.loading4 || "Son kontroller yapılıyor...",
+                    quizT.loading5 || "Quiz başlamak üzere!"
+                ];
+
+                for (let i = 0; i < messages.length; i++) {
+                    setLoadingMessage(messages[i]);
+                    // Random delay between 2-4 seconds for each step (total ~15s)
+                    await new Promise(r => setTimeout(r, 2000 + Math.random() * 2000));
+                }
+
+                setLoading(false);
 
             } catch (error) {
                 console.error("Error initializing quiz:", error);
@@ -176,9 +214,11 @@ export default function QuizPlayPage() {
         if (currentQ.status === 'correct' || currentQ.status === 'wrong') return;
 
         const normalizedInput = normalizeString(inputValue);
-        const normalizedCorrect = normalizeString(currentQ.correctAnswer);
 
-        const isCorrect = normalizedInput === normalizedCorrect;
+        // Check against ALL valid answers
+        const isCorrect = currentQ.validAnswers.some(ans =>
+            normalizeString(ans) === normalizedInput
+        );
 
         const updatedQuestions = [...questions];
         updatedQuestions[currentIndex] = {
@@ -297,7 +337,7 @@ export default function QuizPlayPage() {
                 isLocked: !!q.isLocked
             })),
             totalQuestions: questions.filter(q => !q.isLocked).length || 0,
-            timeTaken: Math.max(0, (300 - currentTimeLeft) || 0)
+            timeTaken: Math.max(0, (1200 - currentTimeLeft) || 0)
         };
 
         // Deep sanitize to remove any remaining undefined which Firestore hates
@@ -334,7 +374,36 @@ export default function QuizPlayPage() {
     const currentQ = questions[currentIndex];
     const isCurrentAnswered = currentQ?.status === 'correct' || currentQ?.status === 'wrong';
 
-    if (loading) return <div className="h-screen flex items-center justify-center bg-[#F9FAFB]"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div></div>;
+    if (loading) {
+        return (
+            <div className="min-h-screen flex flex-col items-center justify-center bg-[#F9FAFB] p-4">
+                <div className="w-full max-w-sm text-center">
+                    <div className="relative w-24 h-24 mx-auto mb-8">
+                        <div className="absolute inset-0 border-4 border-slate-100 rounded-full"></div>
+                        <div className="absolute inset-0 border-4 border-[#3FB8F5] rounded-full border-t-transparent animate-spin"></div>
+                        <div className="absolute inset-0 flex items-center justify-center">
+                            <span className="text-2xl animate-bounce">⚡</span>
+                        </div>
+                    </div>
+                    <h2 className="text-2xl font-bold text-slate-800 mb-2 animate-pulse transition-all duration-500">
+                        {loadingMessage}
+                    </h2>
+                    <p className="text-slate-400 text-sm">Lütfen bekleyin...</p>
+
+                    {/* Fake Progress Bar */}
+                    <div className="mt-8 bg-slate-100 rounded-full h-2 w-full overflow-hidden">
+                        <div className="h-full bg-[#3FB8F5] animate-[progress_15s_ease-in-out_forwards] w-full origin-left"></div>
+                    </div>
+                </div>
+                <style jsx>{`
+                    @keyframes progress {
+                        0% { transform: scaleX(0); }
+                        100% { transform: scaleX(1); }
+                    }
+                `}</style>
+            </div>
+        );
+    }
 
     if (quizFinished && !resultSaving) {
         return (
@@ -430,7 +499,7 @@ export default function QuizPlayPage() {
                                             </div>
                                             {currentQ.status === 'wrong' && (
                                                 <div className="text-sm mt-1 text-slate-500 font-normal">
-                                                    {t.quiz.correctAnswer}: <span className="font-bold">{currentQ.correctAnswer}</span>
+                                                    {t.quiz.correctAnswer}: <span className="font-bold">{currentQ.validAnswers.join(', ')}</span>
                                                 </div>
                                             )}
                                         </div>
