@@ -37,12 +37,21 @@ export const translations = {
             successMessage: 'Word added successfully!',
             errorMessage: 'An error occurred.',
             validationMessage: 'Please enter both words.',
+            // New keys
+            deleteTitle: 'Delete Word',
+            deleteConfirm: 'Are you sure you want to remove this word from your list?',
+            editTitle: 'Edit Word',
         },
         common: {
             sort: 'SORT',
             lang: 'LANG',
             english: 'English',
             turkish: 'Turkish',
+            delete: 'Delete',
+            edit: 'Edit',
+            cancel: 'Cancel',
+            save: 'Save',
+            finish: 'Finish',
         },
         home: {
             welcome: 'Welcome,',
@@ -136,12 +145,21 @@ export const translations = {
             successMessage: 'Kelime başarıyla eklendi!',
             errorMessage: 'Bir hata oluştu.',
             validationMessage: 'Lütfen her iki kelimeyi de giriniz.',
+            // New keys
+            deleteTitle: 'Kelimeyi Sil',
+            deleteConfirm: 'kelimesini listenizden silmek istediğinize emin misiniz?',
+            editTitle: 'Kelimeyi Düzenle',
         },
         common: {
             sort: 'SIRALA',
             lang: 'DİL',
             english: 'İngilizce',
             turkish: 'Türkçe',
+            delete: 'Sil',
+            edit: 'Düzenle',
+            cancel: 'İptal',
+            save: 'Kaydet',
+            finish: 'Bitir',
         },
         home: {
             welcome: 'Hoş geldin,',

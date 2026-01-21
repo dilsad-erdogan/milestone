@@ -1,13 +1,15 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Languages, Globe, Plus, ArrowLeft } from "lucide-react";
+import { Languages, Globe, Plus, ArrowLeft, Trash2, Edit2, Check } from "lucide-react";
 import { getAllCategories } from "@/firebase/categories";
 import { addWord, getWordById } from "@/firebase/words";
-import { addWordToUser, getUserWords } from "@/firebase/accounts";
+import { addWordToUser, getUserWords, removeWordFromUser } from "@/firebase/accounts";
 import AuthGuard from "@/components/AuthGuard";
 import { useAuth } from "@/context/AuthContext";
 import WordCard from "@/components/WordCard";
+import DeleteConfirmModal from "@/components/DeleteConfirmModal";
+import EditWordModal from "@/components/EditWordModal";
 
 import { useLanguage } from "@/context/LanguageContext";
 
@@ -16,6 +18,13 @@ export default function MyWordsPage() {
     const [userWords, setUserWords] = useState<any[]>([]);
     const [filteredWords, setFilteredWords] = useState<any[]>([]);
     const [loadingWords, setLoadingWords] = useState(true);
+
+    // Modes
+    const [isDeleting, setIsDeleting] = useState(false);
+    const [isEditing, setIsEditing] = useState(false);
+    const [selectedWord, setSelectedWord] = useState<any>(null);
+    const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+    const [editModalOpen, setEditModalOpen] = useState(false);
 
     // Form states
     const [engWord, setEngWord] = useState("");
@@ -149,9 +158,110 @@ export default function MyWordsPage() {
         }
     };
 
+    // --- Mode Toggles ---
+    const toggleDeleteMode = () => {
+        setIsDeleting(!isDeleting);
+        setIsEditing(false); // Exclusive
+    };
+
+    const toggleEditMode = () => {
+        setIsEditing(!isEditing);
+        setIsDeleting(false); // Exclusive
+    };
+
+    // --- Actions ---
+    const handleWordClick = (word: any) => {
+        if (isDeleting) {
+            setSelectedWord(word);
+            setDeleteModalOpen(true);
+        } else if (isEditing) {
+            setSelectedWord(word);
+            setEditModalOpen(true);
+        }
+    };
+
+    const confirmDelete = async () => {
+        if (!user || !selectedWord) return;
+        try {
+            await removeWordFromUser(user.uid, selectedWord.id);
+            setUserWords(prev => prev.filter(w => w.id !== selectedWord.id));
+            setDeleteModalOpen(false);
+            setSelectedWord(null);
+        } catch (error) {
+            console.error("Delete error:", error);
+            alert("Silme işlemi başarısız.");
+        }
+    };
+
+    const confirmEdit = async (newEng: string, newTr: string) => {
+        if (!user || !selectedWord) return;
+        // 1. Add new word (or find existing)
+        try {
+            // Re-use logic for adding to ensure consistent deduplication
+            // But we need to define categories again or extract helper
+            // For now, simpler approach: blind add/find like handleSave
+
+            const engChar = newEng.charAt(0).toLocaleUpperCase('tr-TR');
+            const trChar = newTr.charAt(0).toLocaleUpperCase('tr-TR');
+
+            // Helper to reuse category logic if possible, or simple fallback
+            // We have categories state here
+            const findCategory = (char: string) => {
+                return categories.find(c => c.id === char || c.name === char || (c.name && c.name.includes(char)));
+            };
+
+            const engCategory = findCategory(engChar);
+            const trCategory = findCategory(trChar);
+            const engId = engCategory ? engCategory.id : engChar;
+            const trId = trCategory ? trCategory.id : trChar;
+
+            const wordData = {
+                eng: newEng.trim().toLocaleUpperCase('tr-TR'),
+                tr: newTr.trim().toLocaleUpperCase('tr-TR'),
+                eng_categoryId: engId,
+                tr_categoryId: trId
+            };
+
+            const newWord = await addWord(wordData); // This returns existing ID if duplicate via our fix
+
+            // 2. Add new ID to user
+            await addWordToUser(user.uid, newWord.id);
+
+            // 3. Remove old ID from user (only if different!)
+            if (newWord.id !== selectedWord.id) {
+                await removeWordFromUser(user.uid, selectedWord.id);
+            }
+
+            // 4. creating local optimistic update or refetch
+            setEditModalOpen(false);
+            setSelectedWord(null);
+            setIsEditing(false); // Exit edit mode? Or stay? Let's stay for multiple edits.
+            fetchUserWords();
+
+        } catch (error) {
+            console.error("Edit error:", error);
+            alert("Güncelleme başarısız.");
+        }
+    };
+
     return (
         <AuthGuard>
             <div className="min-h-screen bg-[#F9FAFB] flex flex-col items-center p-4 pt-24">
+
+                <DeleteConfirmModal
+                    isOpen={deleteModalOpen}
+                    onClose={() => setDeleteModalOpen(false)}
+                    onConfirm={confirmDelete}
+                    wordText={selectedWord ? (languageMode === 'eng' ? selectedWord.eng : selectedWord.tr) : ""}
+                />
+
+                <EditWordModal
+                    isOpen={editModalOpen}
+                    onClose={() => setEditModalOpen(false)}
+                    onSave={confirmEdit}
+                    initialEng={selectedWord?.eng || ""}
+                    initialTr={selectedWord?.tr || ""}
+                />
 
                 {view === 'list' && (
                     <div className="w-full max-w-6xl">
@@ -161,6 +271,36 @@ export default function MyWordsPage() {
                                 <p className="text-slate-500 mt-1">{t.myWords.subtitle}</p>
                             </div>
                             <div className="flex items-center gap-3">
+                                {/* Delete Toggle */}
+                                <button
+                                    onClick={toggleDeleteMode}
+                                    className={`
+                                        flex items-center justify-center gap-2 px-4 py-2 rounded-full font-medium transition-all shadow-sm active:scale-95
+                                        ${isDeleting
+                                            ? "bg-red-500 text-white shadow-red-200"
+                                            : "bg-white text-slate-600 hover:text-red-500 border border-slate-200"}
+                                    `}
+                                >
+                                    {isDeleting ? <Check className="w-4 h-4" /> : <Trash2 className="w-4 h-4" />}
+                                    <span className="hidden sm:inline text-xs font-bold">{isDeleting ? (t.common.finish || "Bitir") : (t.common.delete || "Sil")}</span>
+                                </button>
+
+                                {/* Edit Toggle */}
+                                <button
+                                    onClick={toggleEditMode}
+                                    className={`
+                                        flex items-center justify-center gap-2 px-4 py-2 rounded-full font-medium transition-all shadow-sm active:scale-95
+                                        ${isEditing
+                                            ? "bg-blue-500 text-white shadow-blue-200"
+                                            : "bg-white text-slate-600 hover:text-blue-500 border border-slate-200"}
+                                    `}
+                                >
+                                    {isEditing ? <Check className="w-4 h-4" /> : <Edit2 className="w-4 h-4" />}
+                                    <span className="hidden sm:inline text-xs font-bold">{isEditing ? (t.common.finish || "Bitir") : (t.common.edit || "Düzenle")}</span>
+                                </button>
+
+                                <div className="h-6 w-[1px] bg-gray-200 hidden sm:block mx-1"></div>
+
                                 <button
                                     onClick={() => setLanguageMode(prev => prev === 'eng' ? 'tr' : 'eng')}
                                     className="px-4 py-2 bg-white border border-slate-200 rounded-full text-slate-600 font-medium hover:bg-slate-50 transition-colors shadow-sm flex items-center gap-2"
@@ -177,7 +317,8 @@ export default function MyWordsPage() {
                                 </button>
                                 <button
                                     onClick={() => setView('form')}
-                                    className="flex items-center gap-2 px-6 py-2 bg-[#3FB8F5] hover:bg-[#34a3da] text-white font-medium rounded-full transition-colors shadow-md active:scale-95 transform duration-100 disabled:opacity-70 disabled:cursor-not-allowed text-sm"
+                                    disabled={isDeleting || isEditing}
+                                    className="flex items-center gap-2 px-6 py-2 bg-[#3FB8F5] hover:bg-[#34a3da] text-white font-medium rounded-full transition-colors shadow-md active:scale-95 transform duration-100 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
                                 >
                                     <Plus className="w-4 h-4" />
                                     {t.myWords.newWord}
@@ -225,6 +366,9 @@ export default function MyWordsPage() {
                                         key={word.id}
                                         word={word}
                                         primaryLanguage={languageMode}
+                                        isDeleting={isDeleting}
+                                        isEditing={isEditing}
+                                        onClick={() => handleWordClick(word)}
                                     />
                                 ))}
                             </div>
