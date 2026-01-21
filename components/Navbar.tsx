@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
 import { logout } from "@/firebase/auth";
-import { PlusCircle, LogOut, BookOpen, Globe } from "lucide-react";
+import { PlusCircle, LogOut, BookOpen, Globe, Languages } from "lucide-react";
 import { useRouter, usePathname } from "next/navigation";
 import { useLanguage } from "@/context/LanguageContext";
 
@@ -55,7 +55,7 @@ export default function Navbar() {
                         className="flex items-center gap-2 group"
                     >
                         <div className="bg-blue-600 p-1.5 rounded-lg group-hover:bg-blue-700 transition-colors">
-                            <BookOpen className="h-5 w-5 text-white" />
+                            <Languages className="h-5 w-5 text-white" />
                         </div>
                         <span className="text-xl font-extrabold tracking-tight text-slate-900 group-hover:text-blue-600 transition-colors">
                             Milestone.

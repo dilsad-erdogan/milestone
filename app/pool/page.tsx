@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import WordCard from "@/components/WordCard";
 import AuthGuard from "@/components/AuthGuard";
+import AddWordConfirmModal from "@/components/AddWordConfirmModal";
 import { BookOpen, Layers } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
 import { useDispatch, useSelector } from "react-redux";
@@ -20,6 +21,10 @@ export default function PoolPage() {
     const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
     const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
     const [languageMode, setLanguageMode] = useState<'eng' | 'tr'>('eng');
+
+    // Confirmation Modal State
+    const [confirmModalOpen, setConfirmModalOpen] = useState(false);
+    const [wordToAdd, setWordToAdd] = useState<any>(null);
 
     const { user } = useAuth();
     const { t } = useLanguage();
@@ -43,14 +48,15 @@ export default function PoolPage() {
         }
 
         // Sort
+        const collator = new Intl.Collator(languageMode === 'tr' ? 'tr-TR' : 'en-US');
         result.sort((a, b) => {
             const valA = (languageMode === 'eng' ? a.eng : a.tr).toLowerCase();
             const valB = (languageMode === 'eng' ? b.eng : b.tr).toLowerCase();
 
             if (sortOrder === 'asc') {
-                return valA.localeCompare(valB, languageMode === 'tr' ? 'tr' : 'en');
+                return collator.compare(valA, valB);
             } else {
-                return valB.localeCompare(valA, languageMode === 'tr' ? 'tr' : 'en');
+                return collator.compare(valB, valA);
             }
         });
 
@@ -60,18 +66,26 @@ export default function PoolPage() {
     const handleAddToMyWords = async (wordId: string) => {
         if (!user || addingId) return;
 
-        setAddingId(wordId);
+        // Find the word and open confirmation modal
+        const word = words.find(w => w.id === wordId);
+        if (word) {
+            setWordToAdd(word);
+            setConfirmModalOpen(true);
+        }
+    };
+
+    const confirmAddWord = async () => {
+        if (!user || !wordToAdd) return;
+
+        setAddingId(wordToAdd.id);
         try {
-            // Find the word object to add
-            const wordToAdd = words.find(w => w.id === wordId);
-            if (wordToAdd) {
-                await dispatch(addUserWord({ userId: user.uid, wordData: wordToAdd })).unwrap();
-            }
+            await dispatch(addUserWord({ userId: user.uid, wordData: wordToAdd })).unwrap();
         } catch (error) {
             console.error("Error adding word:", error);
             alert("Kelime eklenirken bir hata oluştu.");
         } finally {
             setAddingId(null);
+            setWordToAdd(null);
         }
     };
 
@@ -80,6 +94,12 @@ export default function PoolPage() {
 
     return (
         <AuthGuard>
+            <AddWordConfirmModal
+                isOpen={confirmModalOpen}
+                onClose={() => setConfirmModalOpen(false)}
+                onConfirm={confirmAddWord}
+                word={wordToAdd}
+            />
             <div className="min-h-screen bg-[#F9FAFB] flex flex-col items-center p-4 pt-24">
                 <div className="w-full max-w-6xl">
                     <div className="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
@@ -92,14 +112,14 @@ export default function PoolPage() {
                                 onClick={() => setLanguageMode(prev => prev === 'eng' ? 'tr' : 'eng')}
                                 className="px-4 py-2 bg-white border border-slate-200 rounded-full text-slate-600 font-medium hover:bg-slate-50 transition-colors shadow-sm flex items-center gap-2"
                             >
-                                <span className="text-xs font-bold text-slate-400">{t.common.lang}</span>
+                                <span className="text-xs font-bold text-slate-400 hidden sm:inline">{t.common.lang}</span>
                                 {languageMode === 'eng' ? t.common.english : t.common.turkish}
                             </button>
                             <button
                                 onClick={() => setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')}
                                 className="px-4 py-2 bg-white border border-slate-200 rounded-full text-slate-600 font-medium hover:bg-slate-50 transition-colors shadow-sm flex items-center gap-2"
                             >
-                                <span className="text-xs font-bold text-slate-400">{t.common.sort}</span>
+                                <span className="text-xs font-bold text-slate-400 hidden sm:inline">{t.common.sort}</span>
                                 {sortOrder === 'asc' ? 'A-Z' : 'Z-A'}
                             </button>
                             <div className="bg-blue-50 p-3 rounded-full hidden md:block">
@@ -123,18 +143,20 @@ export default function PoolPage() {
                                 >
                                     {t.pool.showAll}
                                 </button>
-                                {categories.map((cat: any) => (
-                                    <button
-                                        key={cat.id}
-                                        onClick={() => setSelectedCategory(cat.id)}
-                                        className={`w-10 h-10 rounded-full text-sm font-bold flex items-center justify-center transition-all flex-shrink-0 ${selectedCategory === cat.id
-                                            ? "bg-[#3FB8F5] text-white shadow-md shadow-blue-200"
-                                            : "bg-white text-slate-500 border border-slate-200 hover:border-blue-300 hover:text-blue-500"
-                                            }`}
-                                    >
-                                        {cat.name}
-                                    </button>
-                                ))}
+                                {[...categories]
+                                    .sort((a, b) => new Intl.Collator('tr-TR').compare(a.name, b.name))
+                                    .map((cat: any) => (
+                                        <button
+                                            key={cat.id}
+                                            onClick={() => setSelectedCategory(cat.id)}
+                                            className={`w-10 h-10 rounded-full text-sm font-bold flex items-center justify-center transition-all flex-shrink-0 ${selectedCategory === cat.id
+                                                ? "bg-[#3FB8F5] text-white shadow-md shadow-blue-200"
+                                                : "bg-white text-slate-500 border border-slate-200 hover:border-blue-300 hover:text-blue-500"
+                                                }`}
+                                        >
+                                            {cat.name}
+                                        </button>
+                                    ))}
                             </div>
                         </div>
                     )}
