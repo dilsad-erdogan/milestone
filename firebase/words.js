@@ -3,9 +3,28 @@ import { collection, addDoc, getDocs, query, where, doc, getDoc } from "firebase
 
 const addWord = async (wordData) => {
     try {
+        const engVal = wordData.eng.toLocaleUpperCase('tr-TR');
+        const trVal = wordData.tr.toLocaleUpperCase('tr-TR');
+
+        // Check for existing word pair
+        const q = query(
+            collection(firestore, "words"),
+            where("eng", "==", engVal),
+            where("tr", "==", trVal)
+        );
+
+        const snapshot = await getDocs(q);
+
+        if (!snapshot.empty) {
+            // Found duplicate, return existing ID
+            const existingDoc = snapshot.docs[0];
+            return { id: existingDoc.id, ...existingDoc.data() };
+        }
+
+        // No duplicate, add new
         const docRef = await addDoc(collection(firestore, "words"), {
-            eng: wordData.eng.toLocaleUpperCase('tr-TR'),
-            tr: wordData.tr.toLocaleUpperCase('tr-TR'),
+            eng: engVal,
+            tr: trVal,
             eng_categoryId: wordData.eng_categoryId,
             tr_categoryId: wordData.tr_categoryId
         });

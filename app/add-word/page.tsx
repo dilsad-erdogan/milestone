@@ -136,7 +136,7 @@ export default function MyWordsPage() {
                 await addWordToUser(user.uid, newWord.id);
             }
 
-            alert(t.myWords.successMessage);
+            // alert(t.myWords.successMessage); // Removed as per request
             setEngWord("");
             setTrWord("");
             setView('list'); // Listeye dön
