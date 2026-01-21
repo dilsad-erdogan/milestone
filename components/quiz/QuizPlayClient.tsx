@@ -327,8 +327,8 @@ export default function QuizPlayClient() {
         // We need the ACTUAL time left when finish was called.
         // We can get it from ref or localized state if we stop timer first.
         const currentTimeLeft = isTimeUp ? 0 : parseInt(localStorage.getItem('quiz_time_left') || '0', 10);
-        const timeBonus = Math.floor(currentTimeLeft / 10);
-        score += timeBonus;
+        const timeBonus = 0; // Time bonus removed
+        // score += timeBonus; // Disabled
         if (score < 0) score = 0;
 
         // Sanitize data -> Remove undefined values and ensure types
