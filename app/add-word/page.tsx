@@ -2,9 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Languages, Globe, Plus, ArrowLeft, Trash2, Edit2, Check } from "lucide-react";
-import { getAllCategories } from "@/firebase/categories";
-import { addWord, getWordById } from "@/firebase/words";
-import { addWordToUser, getUserWords, removeWordFromUser } from "@/firebase/accounts";
+// Removed direct firebase imports
 import AuthGuard from "@/components/AuthGuard";
 import { useAuth } from "@/context/AuthContext";
 import WordCard from "@/components/WordCard";
@@ -12,12 +10,18 @@ import DeleteConfirmModal from "@/components/DeleteConfirmModal";
 import EditWordModal from "@/components/EditWordModal";
 
 import { useLanguage } from "@/context/LanguageContext";
+import { useDispatch, useSelector } from "react-redux";
+import { RootState, AppDispatch } from "../../store";
+import { fetchAppData, addUserWord, removeUserWord, updateUserWord } from "../../store/slices/appSlice";
 
 export default function MyWordsPage() {
+    // Redux
+    const dispatch = useDispatch<AppDispatch>();
+    const { userWords, categories, loading: reduxLoading, initialized } = useSelector((state: RootState) => state.app);
+
     const [view, setView] = useState<'list' | 'form'>('list');
-    const [userWords, setUserWords] = useState<any[]>([]);
+    // Using Redux state instead of local userWords
     const [filteredWords, setFilteredWords] = useState<any[]>([]);
-    const [loadingWords, setLoadingWords] = useState(true);
 
     // Modes
     const [isDeleting, setIsDeleting] = useState(false);
@@ -30,7 +34,7 @@ export default function MyWordsPage() {
     const [engWord, setEngWord] = useState("");
     const [trWord, setTrWord] = useState("");
     const [loading, setLoading] = useState(false);
-    const [categories, setCategories] = useState<any[]>([]);
+    // Categories from Redux
     const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
     const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
     const [languageMode, setLanguageMode] = useState<'eng' | 'tr'>('eng'); // Local state for content language
@@ -38,42 +42,12 @@ export default function MyWordsPage() {
     const { user } = useAuth();
     const { t } = useLanguage(); // Use 't' for UI labels
 
-    // Kullanıcının kelimelerini çek
-    const fetchUserWords = async () => {
-        if (!user) return;
-        setLoadingWords(true);
-        try {
-            const wordIds = await getUserWords(user.uid);
-            const wordsPromises = wordIds.map((id: string) => getWordById(id));
-            const wordsData = await Promise.all(wordsPromises);
-
-            // Null olmayanları filtrele (silinmiş olabilir)
-            const validWords = wordsData.filter(w => w !== null);
-            setUserWords(validWords);
-        } catch (error) {
-            console.error("Error fetching user words:", error);
-        } finally {
-            setLoadingWords(false);
-        }
-    };
-
-    // Kategorileri çek
+    // Init Data via Redux
     useEffect(() => {
-        const fetchCategories = async () => {
-            if (!user) return;
-            try {
-                const cats = await getAllCategories();
-                setCategories(cats.sort((a: any, b: any) => a.name.localeCompare(b.name)));
-            } catch (err) {
-                console.error("Failed to load categories:", err);
-            }
-        };
-
-        if (user) {
-            fetchCategories();
-            fetchUserWords();
+        if (user && !initialized) {
+            dispatch(fetchAppData(user.uid));
         }
-    }, [user]);
+    }, [user, initialized, dispatch]);
 
     // Filter and Sort Effect
     useEffect(() => {
@@ -112,14 +86,13 @@ export default function MyWordsPage() {
             const engChar = engWord.charAt(0).toLocaleUpperCase('tr-TR');
             const trChar = trWord.charAt(0).toLocaleUpperCase('tr-TR');
 
+            // Categories already loaded in Redux
             if (categories.length === 0) {
-                alert("Kategoriler yüklenemedi. Lütfen sayfayı yenileyin.");
-                setLoading(false);
-                return;
+                // Should be loaded by now if initialized
             }
 
             const findCategory = (char: string) => {
-                return categories.find(c =>
+                return categories.find((c: any) =>
                     c.id === char ||
                     c.name === char ||
                     (c.name && c.name.includes(char))
@@ -139,17 +112,14 @@ export default function MyWordsPage() {
                 tr_categoryId: trId
             };
 
-            const newWord = await addWord(wordData);
-
-            if (user && user.uid) {
-                await addWordToUser(user.uid, newWord.id);
+            if (user) {
+                await dispatch(addUserWord({ userId: user.uid, wordData })).unwrap();
             }
 
             // alert(t.myWords.successMessage); // Removed as per request
             setEngWord("");
             setTrWord("");
             setView('list'); // Listeye dön
-            fetchUserWords(); // Listeyi güncelle
         } catch (error) {
             console.error("Error saving word:", error);
             alert(t.myWords.errorMessage);
@@ -157,6 +127,7 @@ export default function MyWordsPage() {
             setLoading(false);
         }
     };
+
 
     // --- Mode Toggles ---
     const toggleDeleteMode = () => {
@@ -183,8 +154,7 @@ export default function MyWordsPage() {
     const confirmDelete = async () => {
         if (!user || !selectedWord) return;
         try {
-            await removeWordFromUser(user.uid, selectedWord.id);
-            setUserWords(prev => prev.filter(w => w.id !== selectedWord.id));
+            await dispatch(removeUserWord({ userId: user.uid, wordId: selectedWord.id })).unwrap();
             setDeleteModalOpen(false);
             setSelectedWord(null);
         } catch (error) {
@@ -195,49 +165,37 @@ export default function MyWordsPage() {
 
     const confirmEdit = async (newEng: string, newTr: string) => {
         if (!user || !selectedWord) return;
-        // 1. Add new word (or find existing)
         try {
-            // Re-use logic for adding to ensure consistent deduplication
-            // But we need to define categories again or extract helper
-            // For now, simpler approach: blind add/find like handleSave
-
             const engChar = newEng.charAt(0).toLocaleUpperCase('tr-TR');
             const trChar = newTr.charAt(0).toLocaleUpperCase('tr-TR');
 
-            // Helper to reuse category logic if possible, or simple fallback
-            // We have categories state here
             const findCategory = (char: string) => {
-                return categories.find(c => c.id === char || c.name === char || (c.name && c.name.includes(char)));
+                return categories.find((c: any) =>
+                    c.id === char ||
+                    c.name === char ||
+                    (c.name && c.name.includes(char))
+                );
             };
 
             const engCategory = findCategory(engChar);
             const trCategory = findCategory(trChar);
-            const engId = engCategory ? engCategory.id : engChar;
-            const trId = trCategory ? trCategory.id : trChar;
 
             const wordData = {
                 eng: newEng.trim().toLocaleUpperCase('tr-TR'),
                 tr: newTr.trim().toLocaleUpperCase('tr-TR'),
-                eng_categoryId: engId,
-                tr_categoryId: trId
+                eng_categoryId: engCategory ? engCategory.id : engChar,
+                tr_categoryId: trCategory ? trCategory.id : trChar
             };
 
-            const newWord = await addWord(wordData); // This returns existing ID if duplicate via our fix
+            await dispatch(updateUserWord({
+                userId: user.uid,
+                oldWordId: selectedWord.id,
+                newWordData: wordData
+            })).unwrap();
 
-            // 2. Add new ID to user
-            await addWordToUser(user.uid, newWord.id);
-
-            // 3. Remove old ID from user (only if different!)
-            if (newWord.id !== selectedWord.id) {
-                await removeWordFromUser(user.uid, selectedWord.id);
-            }
-
-            // 4. creating local optimistic update or refetch
             setEditModalOpen(false);
             setSelectedWord(null);
-            setIsEditing(false); // Exit edit mode? Or stay? Let's stay for multiple edits.
-            fetchUserWords();
-
+            setIsEditing(false);
         } catch (error) {
             console.error("Edit error:", error);
             alert("Güncelleme başarısız.");
@@ -326,8 +284,9 @@ export default function MyWordsPage() {
                             </div>
                         </div>
 
+
                         {/* Category Filter */}
-                        {!loadingWords && categories.length > 0 && userWords.length > 0 && (
+                        {(!reduxLoading || initialized) && categories.length > 0 && userWords.length > 0 && (
                             <div className="mb-8 overflow-x-auto pb-2 -mx-4 px-4 md:mx-0 md:px-0">
                                 <div className="flex gap-2 min-w-min">
                                     <button
@@ -339,7 +298,7 @@ export default function MyWordsPage() {
                                     >
                                         {t.pool.showAll}
                                     </button>
-                                    {categories.map((cat) => (
+                                    {categories.map((cat: any) => (
                                         <button
                                             key={cat.id}
                                             onClick={() => setSelectedCategory(cat.id)}
@@ -355,7 +314,7 @@ export default function MyWordsPage() {
                             </div>
                         )}
 
-                        {loadingWords ? (
+                        {(!initialized && reduxLoading) ? (
                             <div className="flex justify-center py-12">
                                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
                             </div>

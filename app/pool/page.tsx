@@ -1,55 +1,35 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getAllWords } from "../../firebase/words";
-import { getAllCategories } from "../../firebase/categories";
-import { getUserWords, addWordToUser } from "../../firebase/accounts";
 import { useAuth } from "@/context/AuthContext";
 import WordCard from "@/components/WordCard";
 import AuthGuard from "@/components/AuthGuard";
 import { BookOpen, Layers } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
+import { useDispatch, useSelector } from "react-redux";
+import { RootState, AppDispatch } from "../../store";
+import { fetchAppData, addUserWord } from "../../store/slices/appSlice";
 
 export default function PoolPage() {
-    const [words, setWords] = useState<any[]>([]);
+    // Redux
+    const dispatch = useDispatch<AppDispatch>();
+    const { words, categories, userWords, loading: reduxLoading, initialized } = useSelector((state: RootState) => state.app);
+
     const [filteredWords, setFilteredWords] = useState<any[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [userWordIds, setUserWordIds] = useState<Set<string>>(new Set());
     const [addingId, setAddingId] = useState<string | null>(null);
-    const [categories, setCategories] = useState<any[]>([]);
     const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
     const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
-    const [languageMode, setLanguageMode] = useState<'eng' | 'tr'>('eng'); // Local state for content language
+    const [languageMode, setLanguageMode] = useState<'eng' | 'tr'>('eng');
 
     const { user } = useAuth();
-    const { t } = useLanguage(); // Use 't' for UI labels, but 'languageMode' for content
+    const { t } = useLanguage();
 
-    // Verileri çek
+    // Fetch Data via Redux
     useEffect(() => {
-        const fetchData = async () => {
-            if (!user) return;
-            try {
-                const [allWords, userWords, allCategories] = await Promise.all([
-                    getAllWords(),
-                    getUserWords(user.uid),
-                    getAllCategories()
-                ]);
-
-                // Filter valid words
-                setWords(allWords.filter((w: any) => w.eng && w.tr));
-                setCategories(allCategories.sort((a: any, b: any) => a.name.localeCompare(b.name)));
-
-                // Store user's word IDs in a Set for O(1) lookup
-                setUserWordIds(new Set(userWords));
-            } catch (error) {
-                console.error("Error fetching data:", error);
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        fetchData();
-    }, [user]);
+        if (user && !initialized) {
+            dispatch(fetchAppData(user.uid));
+        }
+    }, [user, initialized, dispatch]);
 
     // Filtering and Sorting Effect
     useEffect(() => {
@@ -82,14 +62,11 @@ export default function PoolPage() {
 
         setAddingId(wordId);
         try {
-            await addWordToUser(user.uid, wordId);
-
-            // Update local state immediately
-            setUserWordIds(prev => {
-                const newSet = new Set(prev);
-                newSet.add(wordId);
-                return newSet;
-            });
+            // Find the word object to add
+            const wordToAdd = words.find(w => w.id === wordId);
+            if (wordToAdd) {
+                await dispatch(addUserWord({ userId: user.uid, wordData: wordToAdd })).unwrap();
+            }
         } catch (error) {
             console.error("Error adding word:", error);
             alert("Kelime eklenirken bir hata oluştu.");
@@ -97,6 +74,9 @@ export default function PoolPage() {
             setAddingId(null);
         }
     };
+
+    // Check if word is added
+    const isWordAdded = (id: string) => userWords.some(w => w.id === id);
 
     return (
         <AuthGuard>
@@ -129,8 +109,10 @@ export default function PoolPage() {
                     </div>
 
                     {/* Category Filter */}
-                    {!loading && categories.length > 0 && (
+                    {/* (!reduxLoading || initialized) check */}
+                    {(initialized || !reduxLoading) && categories.length > 0 && (
                         <div className="mb-8 overflow-x-auto pb-2 -mx-4 px-4 md:mx-0 md:px-0">
+                            {/* ... existing code ... */}
                             <div className="flex gap-2 min-w-min">
                                 <button
                                     onClick={() => setSelectedCategory(null)}
@@ -141,7 +123,7 @@ export default function PoolPage() {
                                 >
                                     {t.pool.showAll}
                                 </button>
-                                {categories.map((cat) => (
+                                {categories.map((cat: any) => (
                                     <button
                                         key={cat.id}
                                         onClick={() => setSelectedCategory(cat.id)}
@@ -157,7 +139,7 @@ export default function PoolPage() {
                         </div>
                     )}
 
-                    {loading ? (
+                    {(!initialized && reduxLoading) ? (
                         <div className="flex justify-center py-12">
                             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#3FB8F5]"></div>
                         </div>
@@ -168,7 +150,7 @@ export default function PoolPage() {
                                     key={word.id}
                                     word={word}
                                     onAdd={handleAddToMyWords}
-                                    isAdded={userWordIds.has(word.id)}
+                                    isAdded={isWordAdded(word.id)}
                                     primaryLanguage={languageMode}
                                 />
                             ))}

@@ -4,6 +4,7 @@ import "./globals.css";
 import { AuthProvider } from "@/context/AuthContext";
 import { LanguageProvider } from "@/context/LanguageContext";
 import Navbar from "@/components/Navbar";
+import StoreProvider from "@/components/StoreProvider";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -31,10 +32,12 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <AuthProvider>
-          <LanguageProvider>
-            <Navbar />
-            {children}
-          </LanguageProvider>
+          <StoreProvider>
+            <LanguageProvider>
+              <Navbar />
+              {children}
+            </LanguageProvider>
+          </StoreProvider>
         </AuthProvider>
       </body>
     </html>

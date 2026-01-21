@@ -5,8 +5,9 @@ import { useParams, useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/context/LanguageContext";
 import AuthGuard from "@/components/AuthGuard";
-import { getUserWords } from "@/firebase/accounts";
-import { getWordById } from "@/firebase/words";
+import { useDispatch, useSelector } from "react-redux";
+import { RootState, AppDispatch } from "../../../store";
+import { fetchAppData } from "../../../store/slices/appSlice";
 import { saveQuizResult } from "@/firebase/quizzes";
 import QuizTimer from "@/components/quiz/QuizTimer";
 import QuizProgress from "@/components/quiz/QuizProgress";
@@ -33,9 +34,13 @@ export default function QuizPlayPage() {
     const { t } = useLanguage();
     const direction = params.direction as 'eng-tr' | 'tr-eng';
 
+    // Redispatch if needed
+    const dispatch = useDispatch<AppDispatch>();
+    const { userWords, loading: reduxLoading, initialized } = useSelector((state: RootState) => state.app);
+
     // State
     const [loading, setLoading] = useState(true);
-    const [loadingMessage, setLoadingMessage] = useState("Quiz hazırlanıyor..."); // New State
+    const [loadingMessage, setLoadingMessage] = useState("Quiz hazırlanıyor...");
     const [questions, setQuestions] = useState<Question[]>([]);
     const [currentIndex, setCurrentIndex] = useState(0);
     const [inputValue, setInputValue] = useState("");
@@ -59,126 +64,133 @@ export default function QuizPlayPage() {
         return () => window.removeEventListener('beforeunload', handleBeforeUnload);
     }, [quizFinished]);
 
-    // Initialize Quiz
+    // Initialize Data
     useEffect(() => {
-        const initQuiz = async () => {
-            if (!user) return;
-            try {
-                // 1. Get User Words
-                const wordIds = await getUserWords(user.uid);
+        if (user && !initialized) {
+            dispatch(fetchAppData(user.uid));
+        }
+    }, [user, initialized, dispatch]);
 
-                const wordsPromises = wordIds.map((id: string) => getWordById(id));
-                const wordsData = await Promise.all(wordsPromises);
-                const validWords = wordsData.filter(w => w !== null);
+    // Check availability and Start Quiz Sequence
+    useEffect(() => {
+        // Wait for Redux to be ready
+        if (!initialized || reduxLoading) return;
 
-                if (validWords.length === 0) {
-                    alert(t.quiz.notEnoughWords);
-                    router.push('/');
-                    return;
-                }
+        // If loaded but no user words?
+        if (userWords.length === 0) {
+            // If truly empty, show alert? 
+            // But maybe initialized is true but words are empty. 
+            // We should check if we really have words.
+            // If we just loaded and it's empty, redirect.
+            // But we need to distinguish "loading" from "empty".
+            // initialized=true means we tried to fetch.
+        }
 
-                // 2. Group Words by Answer Letter
-                const groupedWords: Record<string, any[]> = {};
-
-                validWords.forEach(word => {
-                    // Determine answer based on direction
-                    const answer = (direction === 'eng-tr' ? word.tr : word.eng)?.trim();
-                    if (!answer) return;
-
-                    // Standardize letter with tr-TR locale
-                    const letter = answer.charAt(0).toLocaleUpperCase('tr-TR');
-
-                    if (!groupedWords[letter]) {
-                        groupedWords[letter] = [];
-                    }
-                    groupedWords[letter].push(word);
-                });
-
-                // 3. Determine Alphabet (Only Used Letters)
-                const usedLetters = Object.keys(groupedWords);
-                const targetAlphabet = usedLetters.sort((a, b) => a.localeCompare(b, 'tr-TR'));
-
-                // 4. Generate Questions for each letter in Alphabet
-                const quizQuestions: Question[] = targetAlphabet.map((letter) => {
-                    const availableWords = groupedWords[letter];
-
-                    if (availableWords && availableWords.length > 0) {
-                        // Randomly select one word
-                        const randomWord = availableWords[Math.floor(Math.random() * availableWords.length)];
-
-                        // FIND ALL VALID ANSWERS
-                        // Search for other words that have the SAME question
-                        const questionText = direction === 'eng-tr' ? randomWord.eng : randomWord.tr;
-                        const validAnswerList = validWords
-                            .filter(w => {
-                                const q = direction === 'eng-tr' ? w.eng : w.tr;
-                                return q?.trim().toLocaleUpperCase('tr-TR') === questionText?.trim().toLocaleUpperCase('tr-TR');
-                            })
-                            .map(w => direction === 'eng-tr' ? w.tr : w.eng);
-
-                        // Ensure the primary answer is included
-                        const primaryAnswer = direction === 'eng-tr' ? randomWord.tr : randomWord.eng;
-                        if (!validAnswerList.includes(primaryAnswer)) {
-                            validAnswerList.push(primaryAnswer);
-                        }
-
-                        return {
-                            id: randomWord.id,
-                            letter: letter,
-                            question: questionText,
-                            correctAnswer: primaryAnswer,
-                            validAnswers: validAnswerList, // All valid translations
-                            status: 'empty',
-                            isLocked: false
-                        };
-                    } else {
-                        // Locked question
-                        return {
-                            id: `locked-${letter}`,
-                            letter: letter,
-                            question: '',
-                            correctAnswer: '',
-                            validAnswers: [],
-                            status: 'locked',
-                            isLocked: true
-                        };
-                    }
-                });
-
-                setQuestions(quizQuestions);
-                setLoading(false);
-
-                // Find first unlocked question
-                const firstUnlocked = quizQuestions.findIndex(q => !q.isLocked);
-                if (firstUnlocked !== -1) setCurrentIndex(firstUnlocked);
-
-                // Start Fake Loading Sequence
-                const quizT = t.quiz as any;
-                const messages = [
-                    quizT.loading1 || "Kelime havuzun taranıyor...",
-                    quizT.loading2 || "Zorluk seviyesi ayarlanıyor...",
-                    quizT.loading3 || "Sorular hazırlanıyor...",
-                    quizT.loading4 || "Son kontroller yapılıyor...",
-                    quizT.loading5 || "Quiz başlamak üzere!"
-                ];
-
-                for (let i = 0; i < messages.length; i++) {
-                    setLoadingMessage(messages[i]);
-                    // Random delay between 2-4 seconds for each step (total ~15s)
-                    await new Promise(r => setTimeout(r, 2000 + Math.random() * 2000));
-                }
-
-                setLoading(false);
-
-            } catch (error) {
-                console.error("Error initializing quiz:", error);
-                alert("Quiz başlatılamadı.");
+        const startQuizSequence = async () => {
+            // 1. Validation
+            if (userWords.length === 0) {
+                alert(t.quiz.notEnoughWords);
                 router.push('/');
+                return;
             }
+
+            // 2. Prepare Data
+            const groupedWords: Record<string, any[]> = {};
+
+            userWords.forEach((word: any) => {
+                // Determine answer based on direction
+                const answer = (direction === 'eng-tr' ? word.tr : word.eng)?.trim();
+                if (!answer) return;
+
+                // Standardize letter with tr-TR locale
+                const letter = answer.charAt(0).toLocaleUpperCase('tr-TR');
+
+                if (!groupedWords[letter]) {
+                    groupedWords[letter] = [];
+                }
+                groupedWords[letter].push(word);
+            });
+
+            // 3. Determine Alphabet (Only Used Letters)
+            const usedLetters = Object.keys(groupedWords);
+            const targetAlphabet = usedLetters.sort((a, b) => a.localeCompare(b, 'tr-TR'));
+
+            // 4. Generate Questions for each letter in Alphabet
+            const quizQuestions: Question[] = targetAlphabet.map((letter) => {
+                const availableWords = groupedWords[letter];
+
+                if (availableWords && availableWords.length > 0) {
+                    // Randomly select one word
+                    const randomWord = availableWords[Math.floor(Math.random() * availableWords.length)];
+
+                    // FIND ALL VALID ANSWERS
+                    const questionText = direction === 'eng-tr' ? randomWord.eng : randomWord.tr;
+
+                    // Filter from Redux userWords
+                    const validAnswerList = userWords
+                        .filter((w: any) => {
+                            const q = direction === 'eng-tr' ? w.eng : w.tr;
+                            return q?.trim().toLocaleUpperCase('tr-TR') === questionText?.trim().toLocaleUpperCase('tr-TR');
+                        })
+                        .map((w: any) => direction === 'eng-tr' ? w.tr : w.eng);
+
+                    // Ensure the primary answer is included
+                    const primaryAnswer = direction === 'eng-tr' ? randomWord.tr : randomWord.eng;
+                    if (!validAnswerList.includes(primaryAnswer)) {
+                        validAnswerList.push(primaryAnswer);
+                    }
+
+                    return {
+                        id: randomWord.id,
+                        letter: letter,
+                        question: questionText,
+                        correctAnswer: primaryAnswer,
+                        validAnswers: validAnswerList,
+                        status: 'empty',
+                        isLocked: false
+                    };
+                } else {
+                    return {
+                        id: `locked-${letter}`,
+                        letter: letter,
+                        question: '',
+                        correctAnswer: '',
+                        validAnswers: [],
+                        status: 'locked',
+                        isLocked: true
+                    };
+                }
+            });
+
+            setQuestions(quizQuestions);
+
+            // Find first unlocked question
+            const firstUnlocked = quizQuestions.findIndex(q => !q.isLocked);
+            if (firstUnlocked !== -1) setCurrentIndex(firstUnlocked);
+
+            // 5. Fake Loading Sequence (Preserve Experience)
+            const quizT = t.quiz as any;
+            const messages = [
+                quizT.loading1 || "Kelime havuzun taranıyor...",
+                quizT.loading2 || "Zorluk seviyesi ayarlanıyor...",
+                quizT.loading3 || "Sorular hazırlanıyor...",
+                quizT.loading4 || "Son kontroller yapılıyor...",
+                quizT.loading5 || "Quiz başlamak üzere!"
+            ];
+
+            for (let i = 0; i < messages.length; i++) {
+                setLoadingMessage(messages[i]);
+                // Random delay between 2-4 seconds for each step (total ~15s)
+                // Reducing slightly since data is faster now, but user likes the "feel".
+                await new Promise(r => setTimeout(r, 1500 + Math.random() * 1000));
+            }
+
+            setLoading(false);
         };
 
-        initQuiz();
-    }, [user, direction, router]);
+        startQuizSequence();
+
+    }, [userWords, initialized, reduxLoading, direction, router]);
 
     // Cleanup localstorage on mount
     useEffect(() => {
