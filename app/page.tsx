@@ -133,7 +133,7 @@ export default function Home() {
               {t.home.startQuizDesc}
             </p>
             <button
-              onClick={() => window.location.href = '/quiz'}
+              onClick={() => router.push('/quiz')}
               className="px-8 py-3 bg-[#3FB8F5] hover:bg-[#34a3da] text-white font-medium rounded-full transition-colors shadow-lg shadow-blue-200"
             >
               {t.home.startQuizButton}

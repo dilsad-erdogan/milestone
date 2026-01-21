@@ -113,7 +113,7 @@ export default function QuizPlayClient() {
 
             // 3. Determine Alphabet (Only Used Letters)
             const usedLetters = Object.keys(groupedWords);
-            const targetAlphabet = usedLetters.sort((a, b) => a.localeCompare(b, 'tr-TR'));
+            const targetAlphabet = usedLetters.sort((a, b) => new Intl.Collator('tr-TR').compare(a, b));
 
             // 4. Generate Questions for each letter in Alphabet
             const quizQuestions: Question[] = targetAlphabet.map((letter) => {
