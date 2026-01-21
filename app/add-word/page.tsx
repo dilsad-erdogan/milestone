@@ -277,7 +277,7 @@ export default function MyWordsPage() {
                                 <button
                                     onClick={() => setView('form')}
                                     disabled={isDeleting || isEditing}
-                                    className="flex items-center justify-center gap-2 px-4 py-2 md:px-6 md:py-2 bg-[#3FB8F5] hover:bg-[#34a3da] text-white font-medium rounded-full transition-colors shadow-md active:scale-95 transform duration-100 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                                    className="flex items-center justify-center gap-2 px-4 py-2 md:px-6 md:py-3 bg-[#3FB8F5] hover:bg-[#34a3da] text-white text-lg lg:text-lg font-medium rounded-full transition-colors shadow-md active:scale-95 transform duration-100 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
                                 >
                                     <Plus className="w-4 h-4" />
                                     <span className="hidden sm:inline">{t.myWords.newWord}</span>

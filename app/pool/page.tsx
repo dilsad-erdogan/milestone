@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import WordCard from "@/components/WordCard";
 import AuthGuard from "@/components/AuthGuard";
+import AddWordConfirmModal from "@/components/AddWordConfirmModal";
 import { BookOpen, Layers } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
 import { useDispatch, useSelector } from "react-redux";
@@ -20,6 +21,10 @@ export default function PoolPage() {
     const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
     const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
     const [languageMode, setLanguageMode] = useState<'eng' | 'tr'>('eng');
+
+    // Confirmation Modal State
+    const [confirmModalOpen, setConfirmModalOpen] = useState(false);
+    const [wordToAdd, setWordToAdd] = useState<any>(null);
 
     const { user } = useAuth();
     const { t } = useLanguage();
@@ -61,18 +66,26 @@ export default function PoolPage() {
     const handleAddToMyWords = async (wordId: string) => {
         if (!user || addingId) return;
 
-        setAddingId(wordId);
+        // Find the word and open confirmation modal
+        const word = words.find(w => w.id === wordId);
+        if (word) {
+            setWordToAdd(word);
+            setConfirmModalOpen(true);
+        }
+    };
+
+    const confirmAddWord = async () => {
+        if (!user || !wordToAdd) return;
+
+        setAddingId(wordToAdd.id);
         try {
-            // Find the word object to add
-            const wordToAdd = words.find(w => w.id === wordId);
-            if (wordToAdd) {
-                await dispatch(addUserWord({ userId: user.uid, wordData: wordToAdd })).unwrap();
-            }
+            await dispatch(addUserWord({ userId: user.uid, wordData: wordToAdd })).unwrap();
         } catch (error) {
             console.error("Error adding word:", error);
             alert("Kelime eklenirken bir hata oluştu.");
         } finally {
             setAddingId(null);
+            setWordToAdd(null);
         }
     };
 
@@ -81,6 +94,12 @@ export default function PoolPage() {
 
     return (
         <AuthGuard>
+            <AddWordConfirmModal
+                isOpen={confirmModalOpen}
+                onClose={() => setConfirmModalOpen(false)}
+                onConfirm={confirmAddWord}
+                word={wordToAdd}
+            />
             <div className="min-h-screen bg-[#F9FAFB] flex flex-col items-center p-4 pt-24">
                 <div className="w-full max-w-6xl">
                     <div className="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
