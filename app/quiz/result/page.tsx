@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useEffect, useState, Suspense } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/context/LanguageContext";
 import AuthGuard from "@/components/AuthGuard";
@@ -9,12 +9,12 @@ import { getQuizResultById } from "@/firebase/quizzes";
 import { Check, X, Clock, Target, Home, RotateCcw, ChevronRight } from "lucide-react";
 import { cn } from "@/utils/cn";
 
-export default function QuizResultPage() {
-    const params = useParams();
+function QuizResultContent() {
+    const searchParams = useSearchParams();
     const router = useRouter();
     const { user } = useAuth();
     const { t } = useLanguage();
-    const resultId = params.quizId as string;
+    const resultId = searchParams.get('id');
 
     const [loading, setLoading] = useState(true);
     const [result, setResult] = useState<any>(null);
@@ -206,5 +206,17 @@ export default function QuizResultPage() {
                 </div>
             </div>
         </AuthGuard>
+    );
+}
+
+export default function QuizResultPage() {
+    return (
+        <Suspense fallback={
+            <div className="h-screen flex items-center justify-center bg-[#F9FAFB]">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+            </div>
+        }>
+            <QuizResultContent />
+        </Suspense>
     );
 }

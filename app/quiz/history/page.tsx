@@ -70,7 +70,7 @@ export default function QuizHistoryPage() {
                                 return (
                                     <div
                                         key={res.id}
-                                        onClick={() => router.push(`/quiz/result/${res.id}`)}
+                                        onClick={() => router.push(`/quiz/result?id=${res.id}`)}
                                         className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-all cursor-pointer group flex items-center justify-between"
                                     >
                                         <div className="flex items-center gap-6">
