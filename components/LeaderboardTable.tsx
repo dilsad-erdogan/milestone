@@ -27,8 +27,8 @@ export default function LeaderboardTable({ title, entries, type, loading }: Lead
     const displayEntries = entries;
 
     return (
-        <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm flex flex-col h-full">
-            <div className="flex items-center gap-3 mb-6">
+        <div className="bg-white rounded-3xl p-4 md:p-6 border border-slate-100 shadow-sm flex flex-col h-full">
+            <div className="flex items-center gap-3 mb-4 md:mb-6">
                 <div className={`p-2 rounded-xl ${type === 'daily' ? 'bg-purple-100' : 'bg-yellow-100'}`}>
                     <Trophy className={`w-5 h-5 ${type === 'daily' ? 'text-purple-600' : 'text-yellow-600'}`} />
                 </div>
@@ -46,11 +46,11 @@ export default function LeaderboardTable({ title, entries, type, loading }: Lead
                 </div>
             ) : (
                 <div className="flex-1 overflow-hidden">
-                    <div className="overflow-y-auto max-h-[400px] pr-2 custom-scrollbar">
-                        <table className="w-full text-left border-collapse">
+                    <div className="overflow-y-auto max-h-[400px] pr-2 custom-scrollbar overflow-x-auto">
+                        <table className="w-full text-left border-collapse min-w-[300px]">
                             <thead className="sticky top-0 bg-white z-10 text-xs font-semibold text-slate-400 uppercase tracking-wider border-b border-slate-100">
                                 <tr>
-                                    <th className="py-3 pl-2">#</th>
+                                    <th className="py-3 pl-2 w-8 md:w-12">#</th>
                                     <th className="py-3">{t.home.welcome}</th>
                                     <th className="py-3 text-right">{t.quiz.score}</th>
                                     {type === 'daily' ? <th className="py-3 text-right">{t.quiz.time}</th> : null}
@@ -59,15 +59,15 @@ export default function LeaderboardTable({ title, entries, type, loading }: Lead
                             <tbody className="divide-y divide-slate-50 text-sm text-slate-600">
                                 {displayEntries.map((entry, index) => (
                                     <tr key={entry.id} className="hover:bg-slate-50 transition-colors">
-                                        <td className="py-3 pl-2 font-bold text-slate-400 w-10">
+                                        <td className="py-3 pl-2 font-bold text-slate-400 w-8 md:w-12 text-xs md:text-sm">
                                             {index + 1}
                                         </td>
                                         <td className="py-3">
-                                            <div className="flex items-center gap-2">
-                                                <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-lg select-none">
+                                            <div className="flex items-center gap-2 md:gap-3">
+                                                <div className="w-8 h-8 min-w-[32px] rounded-full bg-slate-100 flex items-center justify-center text-lg select-none">
                                                     {getAvatarEmoji(entry.id)}
                                                 </div>
-                                                <span className="font-medium text-slate-800 truncate max-w-[120px]" title={entry.displayName}>
+                                                <span className="font-medium text-slate-800 truncate max-w-[100px] md:max-w-[140px]" title={entry.displayName}>
                                                     {entry.displayName}
                                                 </span>
                                             </div>
@@ -76,7 +76,7 @@ export default function LeaderboardTable({ title, entries, type, loading }: Lead
                                             {entry.score}
                                         </td>
                                         {type === 'daily' ? (
-                                            <td className="py-3 text-right font-mono text-xs text-slate-400">
+                                            <td className="py-3 text-right font-mono text-xs text-slate-400 hidden sm:table-cell">
                                                 {formatTime(entry.timeTaken || 0)}
                                             </td>
                                         ) : null}

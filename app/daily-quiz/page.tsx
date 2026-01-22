@@ -27,7 +27,7 @@ export default function DailyQuizPage() {
                 }
 
                 // Get Quiz
-                const quiz = await getDailyQuiz();
+                const quiz: any = await getDailyQuiz();
                 setDailyWords(quiz.words);
             } catch (error: any) {
                 console.error(error);
