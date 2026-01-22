@@ -109,6 +109,7 @@ export const translations = {
             accuracy: 'Accuracy',
             historyDescription: 'History of quizzes you have taken.',
             exitWarning: 'Your quiz will be terminated. Are you sure you want to leave?',
+            halfTime: 'Half time passed!',
         }
     },
     tr: {
@@ -218,6 +219,7 @@ export const translations = {
             accuracy: 'Doğruluk',
             historyDescription: 'Geçmişte çözdüğünüz quizlerin dökümü.',
             exitWarning: 'Quiziniz sonlandırılacak. Ayrılmak istediğinize emin misiniz?',
+            halfTime: 'Sürenin yarısı doldu!',
         }
     }
 };

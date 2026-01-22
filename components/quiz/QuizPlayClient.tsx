@@ -45,8 +45,9 @@ export default function QuizPlayClient() {
     const [currentIndex, setCurrentIndex] = useState(0);
     const [inputValue, setInputValue] = useState("");
     const [quizFinished, setQuizFinished] = useState(false);
-    const [timeLeft, setTimeLeft] = useState(1200); // 20 mins
+    const [timeLeft, setTimeLeft] = useState(300); // 5 mins
     const [resultSaving, setResultSaving] = useState(false);
+    const [showHalftimeAlert, setShowHalftimeAlert] = useState(false);
 
     // Refs for preventing double submission
     const submittedRef = useRef<Set<string>>(new Set());
@@ -201,6 +202,14 @@ export default function QuizPlayClient() {
         finishQuiz(true);
     };
 
+    const handleTick = (currentTime: number) => {
+        // Notify when half time is passed (150 seconds remaining of 300)
+        if (currentTime === 150) {
+            setShowHalftimeAlert(true);
+            setTimeout(() => setShowHalftimeAlert(false), 3000);
+        }
+    };
+
     const normalizeString = (str: string) => {
         return str
             .toLocaleLowerCase(direction === 'eng-tr' ? 'tr-TR' : 'en-US')
@@ -349,7 +358,7 @@ export default function QuizPlayClient() {
                 isLocked: !!q.isLocked
             })),
             totalQuestions: questions.filter(q => !q.isLocked).length || 0,
-            timeTaken: Math.max(0, (1200 - currentTimeLeft) || 0)
+            timeTaken: Math.max(0, (300 - currentTimeLeft) || 0)
         };
 
         // Deep sanitize to remove any remaining undefined which Firestore hates
@@ -388,7 +397,7 @@ export default function QuizPlayClient() {
 
     if (loading) {
         return (
-            <div className="min-h-screen flex flex-col items-center justify-center bg-[#F9FAFB] p-4">
+            <div className="min-h-screen flex flex-col items-center justify-center bg-[#F9FAFB] p-4 pt-20">
                 <div className="w-full max-w-sm text-center">
                     <div className="relative w-24 h-24 mx-auto mb-8">
                         <div className="absolute inset-0 border-4 border-slate-100 rounded-full"></div>
@@ -431,9 +440,9 @@ export default function QuizPlayClient() {
 
     return (
         <AuthGuard>
-            <div className="min-h-screen bg-[#F9FAFB] flex flex-col">
+            <div className="min-h-screen bg-[#F9FAFB] flex flex-col pt-16">
                 {/* Header */}
-                <div className="bg-white border-b border-slate-200 p-4 sticky top-0 z-10 shadow-sm">
+                <div className="bg-white border-b border-slate-200 p-4 sticky top-16 z-40 shadow-sm">
                     <div className="max-w-4xl mx-auto flex items-center justify-between">
                         <div className="w-24">
                             <button onClick={() => {
@@ -447,6 +456,7 @@ export default function QuizPlayClient() {
                         <QuizTimer
                             initialTime={timeLeft}
                             onTimeUp={handleTimeUp}
+                            onTick={handleTick}
                             isActive={!quizFinished}
                         />
 
@@ -478,6 +488,16 @@ export default function QuizPlayClient() {
                         />
                     </div>
                 </div>
+
+                {/* Halftime Notification */}
+                {showHalftimeAlert && (
+                    <div className="fixed top-24 left-1/2 transform -translate-x-1/2 z-50 animate-bounce">
+                        <div className="bg-orange-500 text-white px-6 py-3 rounded-full shadow-lg font-bold flex items-center gap-2">
+                            <span className="text-xl">⚠️</span>
+                            {t.quiz.halfTime || "Sürenin yarısı doldu!"}
+                        </div>
+                    </div>
+                )}
 
                 {/* Main Content */}
                 <div className="flex-1 flex flex-col items-center justify-center p-4">
