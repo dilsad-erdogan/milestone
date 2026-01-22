@@ -124,20 +124,39 @@ export default function Home() {
             </div>
           )}
 
-          <div className="bg-white rounded-3xl p-8 border border-slate-100 shadow-sm text-center py-16">
-            <div className="mb-4 inline-flex items-center justify-center w-16 h-16 rounded-full bg-blue-50 mb-6">
-              <BookOpen className="w-8 h-8 text-[#3FB8F5]" />
+          <div className="grid md:grid-cols-2 gap-6">
+            <div className="bg-white rounded-3xl p-8 border border-slate-100 shadow-sm text-center py-16 relative overflow-hidden">
+              <div className="absolute top-0 right-0 bg-yellow-400 text-white text-xs font-bold px-3 py-1 rounded-bl-xl">Yeni</div>
+              <div className="mb-4 inline-flex items-center justify-center w-16 h-16 rounded-full bg-purple-50 mb-6">
+                <Star className="w-8 h-8 text-purple-500" />
+              </div>
+              <h2 className="text-2xl font-bold text-slate-900 mb-2">{t.home.dailyQuizTitle}</h2>
+              <p className="text-slate-500 max-w-md mx-auto mb-8">
+                {t.home.dailyQuizDesc}
+              </p>
+              <button
+                onClick={() => router.push('/daily-quiz')}
+                className="px-8 py-3 bg-purple-600 hover:bg-purple-700 text-white font-medium rounded-full transition-colors shadow-lg shadow-purple-200"
+              >
+                {t.home.dailyQuizButton}
+              </button>
             </div>
-            <h2 className="text-2xl font-bold text-slate-900 mb-2">{t.home.startQuizTitle}</h2>
-            <p className="text-slate-500 max-w-md mx-auto mb-8">
-              {t.home.startQuizDesc}
-            </p>
-            <button
-              onClick={() => router.push('/quiz')}
-              className="px-8 py-3 bg-[#3FB8F5] hover:bg-[#34a3da] text-white font-medium rounded-full transition-colors shadow-lg shadow-blue-200"
-            >
-              {t.home.startQuizButton}
-            </button>
+
+            <div className="bg-white rounded-3xl p-8 border border-slate-100 shadow-sm text-center py-16">
+              <div className="mb-4 inline-flex items-center justify-center w-16 h-16 rounded-full bg-blue-50 mb-6">
+                <BookOpen className="w-8 h-8 text-[#3FB8F5]" />
+              </div>
+              <h2 className="text-2xl font-bold text-slate-900 mb-2">{t.home.startQuizTitle}</h2>
+              <p className="text-slate-500 max-w-md mx-auto mb-8">
+                {t.home.startQuizDesc}
+              </p>
+              <button
+                onClick={() => router.push('/quiz')}
+                className="px-8 py-3 bg-[#3FB8F5] hover:bg-[#34a3da] text-white font-medium rounded-full transition-colors shadow-lg shadow-blue-200"
+              >
+                {t.home.startQuizButton}
+              </button>
+            </div>
           </div>
 
         </div>

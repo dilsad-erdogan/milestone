@@ -65,6 +65,9 @@ export const translations = {
             startQuizTitle: 'Start Quiz',
             startQuizDesc: 'Create a new quiz to test your vocabulary and improve yourself.',
             startQuizButton: 'Start Now',
+            dailyQuizTitle: 'Daily Quiz',
+            dailyQuizDesc: 'Solve the special quiz of the day, generated from the global pool!',
+            dailyQuizButton: 'Start Daily Quiz',
         },
         quiz: {
             title: 'Quiz',
@@ -175,6 +178,9 @@ export const translations = {
             startQuizTitle: 'Quizlere Başla',
             startQuizDesc: 'Kelime bilgini test etmek ve kendini geliştirmek için yeni bir quiz oluştur.',
             startQuizButton: 'Hemen Başla',
+            dailyQuizTitle: 'Günün Quizi',
+            dailyQuizDesc: 'Global havuzdan oluşturulan günün quizini çöz!',
+            dailyQuizButton: 'Günün Quizine Başla',
         },
         quiz: {
             title: 'Quiz',

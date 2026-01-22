@@ -27,7 +27,12 @@ interface Question {
     isLocked: boolean;
 }
 
-export default function QuizPlayClient() {
+interface QuizPlayClientProps {
+    mode?: 'normal' | 'daily';
+    overrideWords?: any[];
+}
+
+export default function QuizPlayClient({ mode = 'normal', overrideWords = [] }: QuizPlayClientProps) {
     const params = useParams();
     const router = useRouter();
     const { user } = useAuth();
@@ -37,6 +42,10 @@ export default function QuizPlayClient() {
     // Redispatch if needed
     const dispatch = useDispatch<AppDispatch>();
     const { userWords, loading: reduxLoading, initialized } = useSelector((state: RootState) => state.app);
+
+    // Determine words source
+    const activeWords = mode === 'daily' ? overrideWords : userWords;
+    const isDaily = mode === 'daily';
 
     // State
     const [loading, setLoading] = useState(true);
@@ -67,38 +76,35 @@ export default function QuizPlayClient() {
 
     // Initialize Data
     useEffect(() => {
-        if (user && !initialized) {
+        if (user && !initialized && mode !== 'daily') {
             dispatch(fetchAppData(user.uid));
         }
-    }, [user, initialized, dispatch]);
+    }, [user, initialized, dispatch, mode]);
 
     // Check availability and Start Quiz Sequence
     useEffect(() => {
-        // Wait for Redux to be ready
-        if (!initialized || reduxLoading) return;
+        // Wait for Redux to be ready ONLY if normal mode
+        if (mode === 'normal' && (!initialized || reduxLoading)) return;
 
         // If loaded but no user words?
-        if (userWords.length === 0) {
-            // If truly empty, show alert? 
-            // But maybe initialized is true but words are empty. 
-            // We should check if we really have words.
-            // If we just loaded and it's empty, redirect.
-            // But we need to distinguish "loading" from "empty".
-            // initialized=true means we tried to fetch.
+        if (mode === 'normal' && userWords.length === 0) {
+            // Already handled below
         }
 
         const startQuizSequence = async () => {
             // 1. Validation
-            if (userWords.length === 0) {
-                alert(t.quiz.notEnoughWords);
-                router.push('/');
+            if (activeWords.length === 0) {
+                if (mode === 'normal') {
+                    alert(t.quiz.notEnoughWords);
+                    router.push('/');
+                }
                 return;
             }
 
             // 2. Prepare Data
             const groupedWords: Record<string, any[]> = {};
 
-            userWords.forEach((word: any) => {
+            activeWords.forEach((word: any) => {
                 // Determine answer based on direction
                 const answer = (direction === 'eng-tr' ? word.tr : word.eng)?.trim();
                 if (!answer) return;
@@ -358,7 +364,9 @@ export default function QuizPlayClient() {
                 isLocked: !!q.isLocked
             })),
             totalQuestions: questions.filter(q => !q.isLocked).length || 0,
-            timeTaken: Math.max(0, (300 - currentTimeLeft) || 0)
+            timeTaken: Math.max(0, (300 - currentTimeLeft) || 0),
+            type: mode, // 'normal' or 'daily'
+            quizDate: mode === 'daily' ? new Date().toISOString().split('T')[0] : null
         };
 
         // Deep sanitize to remove any remaining undefined which Firestore hates
