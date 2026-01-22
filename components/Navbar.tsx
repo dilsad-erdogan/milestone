@@ -70,7 +70,7 @@ export default function Navbar() {
                             className="flex items-center justify-center gap-2 px-4 h-10 text-sm font-semibold text-slate-600 hover:text-[#3FB8F5] hover:bg-[#3FB8F5]/20 rounded-full transition-all active:scale-95"
                         >
                             <div className="p-1"> <BookOpen className="h-4 w-4" /> </div>
-                            <span className="hidden sm:inline pt-[2px]">{t.navbar.pool}</span>
+                            <span className="hidden sm:inline pt-[2px]">{t.navbar.allWords}</span>
                         </Link>
 
                         <Link
