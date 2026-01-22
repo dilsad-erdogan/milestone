@@ -44,10 +44,21 @@ const getUserWords = async (userId) => {
 const addWordToUser = async (userId, wordId) => {
     try {
         const userDocRef = doc(firestore, "accounts", userId);
+        const userDocSnap = await getDoc(userDocRef);
+
+        if (userDocSnap.exists()) {
+            const userData = userDocSnap.data();
+            const myWords = userData.myWords || [];
+
+            if (myWords.includes(wordId)) {
+                return { success: false, alreadyExists: true };
+            }
+        }
+
         await updateDoc(userDocRef, {
             myWords: arrayUnion(wordId)
         });
-        return true;
+        return { success: true };
     } catch (error) {
         console.error("Error adding word to user:", error);
         throw error;

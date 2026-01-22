@@ -5,6 +5,7 @@ export const translations = {
     eng: {
         navbar: {
             pool: 'Pool',
+            allWords: 'All Words',
             myWords: 'My Words',
             logout: 'Log Out',
         },
@@ -113,6 +114,7 @@ export const translations = {
     tr: {
         navbar: {
             pool: 'Havuz',
+            allWords: 'Tüm Kelimeler',
             myWords: 'Kelimelerim',
             logout: 'Çıkış Yap',
         },

@@ -59,11 +59,17 @@ export const fetchAppData = createAsyncThunk(
 
 export const addUserWord = createAsyncThunk(
     'app/addUserWord',
-    async ({ userId, wordData }: { userId: string, wordData: any }, { dispatch }) => {
-        // 1. Check if word exists globally (dedup) - logic is in addWord from firebase/words.js now?
-        // Actually the current addWord helper handles the check?? 
-        // Wait, the previous logic in page.tsx did manual check or the helper did?
-        // The helper `addWord` was modified to check duplicates.
+    async ({ userId, wordData }: { userId: string, wordData: any }, { getState, rejectWithValue }) => {
+        const state = getState() as any;
+
+        // Check if word pair already exists in user's words
+        const isDuplicate = state.app.userWords.some((w: any) =>
+            w.eng === wordData.eng && w.tr === wordData.tr
+        );
+
+        if (isDuplicate) {
+            return rejectWithValue("Bu kelime çifti zaten listenizde mevcut");
+        }
 
         try {
             const newWord = await addWord(wordData);
@@ -141,14 +147,21 @@ const appSlice = createSlice({
 
         // Add User Word
         builder.addCase(addUserWord.fulfilled, (state, action) => {
-            // Add to global words if not exists?
-            const exists = state.words.find(w => w.id === action.payload.id);
-            if (!exists) {
+            // Add to global words if not exists
+            const existsInGlobal = state.words.find(w => w.id === action.payload.id);
+            if (!existsInGlobal) {
                 state.words.push(action.payload);
             }
 
-            // Add to user words
-            state.userWords.push(action.payload);
+            // Add to user words only if not already there (safety check)
+            const existsInUser = state.userWords.find(w => w.id === action.payload.id);
+            const isDuplicatePair = state.userWords.some(w =>
+                w.eng === action.payload.eng && w.tr === action.payload.tr
+            );
+
+            if (!existsInUser && !isDuplicatePair) {
+                state.userWords.push(action.payload);
+            }
         });
 
         // Remove User Word
