@@ -82,15 +82,23 @@ export default function MyWordsPage() {
             return;
         }
 
+        const normalizedEng = engWord.trim().toLocaleUpperCase('tr-TR');
+        const normalizedTr = trWord.trim().toLocaleUpperCase('tr-TR');
+
+        // Check for duplicate in local state before dispatching
+        const isDuplicate = userWords.some((w: any) =>
+            w.eng === normalizedEng && w.tr === normalizedTr
+        );
+
+        if (isDuplicate) {
+            alert("Bu kelime çifti zaten listenizde mevcut.");
+            return;
+        }
+
         setLoading(true);
         try {
-            const engChar = engWord.charAt(0).toLocaleUpperCase('tr-TR');
-            const trChar = trWord.charAt(0).toLocaleUpperCase('tr-TR');
-
-            // Categories already loaded in Redux
-            if (categories.length === 0) {
-                // Should be loaded by now if initialized
-            }
+            const engChar = normalizedEng.charAt(0);
+            const trChar = normalizedTr.charAt(0);
 
             const findCategory = (char: string) => {
                 return categories.find((c: any) =>
@@ -107,8 +115,8 @@ export default function MyWordsPage() {
             const trId = trCategory ? trCategory.id : trChar;
 
             const wordData = {
-                eng: engWord.trim().toLocaleUpperCase('tr-TR'),
-                tr: trWord.trim().toLocaleUpperCase('tr-TR'),
+                eng: normalizedEng,
+                tr: normalizedTr,
                 eng_categoryId: engId,
                 tr_categoryId: trId
             };
@@ -121,9 +129,13 @@ export default function MyWordsPage() {
             setEngWord("");
             setTrWord("");
             setView('list'); // Listeye dön
-        } catch (error) {
+        } catch (error: any) {
             console.error("Error saving word:", error);
-            alert(t.myWords.errorMessage);
+            if (error === "Bu kelime çifti zaten listenizde mevcut") {
+                alert(error);
+            } else {
+                alert(t.myWords.errorMessage);
+            }
         } finally {
             setLoading(false);
         }
