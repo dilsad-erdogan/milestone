@@ -366,7 +366,9 @@ export default function QuizPlayClient({ mode = 'normal', overrideWords = [] }: 
             totalQuestions: questions.filter(q => !q.isLocked).length || 0,
             timeTaken: Math.max(0, (300 - currentTimeLeft) || 0),
             type: mode, // 'normal' or 'daily'
-            quizDate: mode === 'daily' ? new Date().toISOString().split('T')[0] : null
+            quizDate: mode === 'daily' ? new Date().toISOString().split('T')[0] : null,
+            displayName: user?.displayName || "Anonymous",
+            photoURL: user?.photoURL || null
         };
 
         // Deep sanitize to remove any remaining undefined which Firestore hates

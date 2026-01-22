@@ -113,6 +113,10 @@ export const translations = {
             historyDescription: 'History of quizzes you have taken.',
             exitWarning: 'Your quiz will be terminated. Are you sure you want to leave?',
             halfTime: 'Half time passed!',
+        },
+        leaderboard: {
+            dailyTitle: 'Daily Quiz Leaders',
+            generalTitle: 'Top Students',
         }
     },
     tr: {
@@ -226,6 +230,10 @@ export const translations = {
             historyDescription: 'Geçmişte çözdüğünüz quizlerin dökümü.',
             exitWarning: 'Quiziniz sonlandırılacak. Ayrılmak istediğinize emin misiniz?',
             halfTime: 'Sürenin yarısı doldu!',
+        },
+        leaderboard: {
+            dailyTitle: 'Günün Liderleri',
+            generalTitle: 'En İyi Öğrenciler',
         }
     }
 };

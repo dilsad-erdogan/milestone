@@ -10,6 +10,8 @@ import { BookOpen, Trophy, Activity, ClipboardList, ListTodo, Star } from "lucid
 
 import { useLanguage } from "@/context/LanguageContext";
 
+import HomeLeaderboards from "@/components/HomeLeaderboards";
+
 export default function Home() {
   const router = useRouter();
   const { user } = useAuth();
@@ -158,6 +160,8 @@ export default function Home() {
               </button>
             </div>
           </div>
+
+          <HomeLeaderboards />
 
         </div>
       </div>

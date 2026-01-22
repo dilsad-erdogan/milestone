@@ -58,7 +58,12 @@ const saveQuizResult = async (userId, quizData) => {
             totalQuestions: quizData.totalQuestions,
             completedAt: Timestamp.now(),
             timeTaken: quizData.timeTaken,
-            status: 'completed'
+            status: 'completed',
+            // Leaderboard fields
+            displayName: quizData.displayName || "Anonymous",
+            photoURL: quizData.photoURL || null,
+            type: quizData.type || 'normal', // 'daily' or 'normal'
+            quizDate: quizData.quizDate || null
         };
 
         const docRef = await addDoc(collection(firestore, "quiz_results"), quizResult);

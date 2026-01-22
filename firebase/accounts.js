@@ -1,5 +1,5 @@
 import { firestore } from "./firebase";
-import { doc, getDoc, setDoc, updateDoc, arrayUnion, arrayRemove } from "firebase/firestore";
+import { doc, getDoc, setDoc, updateDoc, arrayUnion, arrayRemove, collection, query, orderBy, limit, getDocs } from "firebase/firestore";
 
 const checkAndCreateUser = async (user) => {
     try {
@@ -126,4 +126,28 @@ const getUserAccount = async (userId) => {
     }
 };
 
-export { checkAndCreateUser, getUserWords, addWordToUser, removeWordFromUser, updateUserScore, addQuizToUser, getUserAccount };
+const getGeneralLeaderboard = async () => {
+    try {
+        // Fetch all users to include those who might rely on default score (missing field)
+        // Note: For large datasets (>1000 users), this should be paginated or indexed properly with a backfill script.
+        const snapshot = await getDocs(collection(firestore, "accounts"));
+
+        const allUsers = snapshot.docs.map(doc => ({
+            id: doc.id,
+            displayName: doc.data().displayName || "Unknown User",
+            score: doc.data().score || 0, // Default to 0 if missing
+            photoURL: doc.data().photoURL
+        }));
+
+        // Sort by score descending
+        allUsers.sort((a, b) => b.score - a.score);
+
+        // Return top 50
+        return allUsers.slice(0, 50);
+    } catch (error) {
+        console.error("Error fetching leaderboard:", error);
+        return [];
+    }
+};
+
+export { checkAndCreateUser, getUserWords, addWordToUser, removeWordFromUser, updateUserScore, addQuizToUser, getUserAccount, getGeneralLeaderboard };
