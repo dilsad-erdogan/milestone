@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/context/LanguageContext";
 import AuthGuard from "@/components/AuthGuard";
@@ -9,6 +9,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { RootState, AppDispatch } from "../../store";
 import { fetchAppData } from "../../store/slices/appSlice";
 import { saveQuizResult } from "@/firebase/quizzes";
+import { getAllWords } from "@/firebase/words";
 import QuizTimer from "@/components/quiz/QuizTimer";
 import QuizProgress from "@/components/quiz/QuizProgress";
 import { ArrowRight, Check, X } from "lucide-react";
@@ -24,6 +25,7 @@ interface Question {
     validAnswers: string[]; // Support multiple correct answers
     status: AnswerStatus;
     userAnswer?: string;
+    // We add a uniqueKey for rendering if needed, though we will prioritize letter for Classic and index for Random
     isLocked: boolean;
 }
 
@@ -35,6 +37,13 @@ interface QuizPlayClientProps {
 export default function QuizPlayClient({ mode = 'normal', overrideWords = [] }: QuizPlayClientProps) {
     const params = useParams();
     const router = useRouter();
+    const searchParams = useSearchParams();
+
+    // Parse query params
+    const queryMode = searchParams.get('mode');
+    const querySource = searchParams.get('source'); // 'my-words' | 'all-words'
+    const queryCount = parseInt(searchParams.get('count') || '10', 10);
+
     const { user } = useAuth();
     const { t } = useLanguage();
     const direction = params.direction as 'eng-tr' | 'tr-eng';
@@ -43,8 +52,8 @@ export default function QuizPlayClient({ mode = 'normal', overrideWords = [] }: 
     const dispatch = useDispatch<AppDispatch>();
     const { userWords, loading: reduxLoading, initialized } = useSelector((state: RootState) => state.app);
 
-    // Determine words source
-    const activeWords = mode === 'daily' ? overrideWords : userWords;
+    // Determine effective mode
+    const isRandom = queryMode === 'random';
     const isDaily = mode === 'daily';
 
     // State
@@ -52,6 +61,9 @@ export default function QuizPlayClient({ mode = 'normal', overrideWords = [] }: 
     const [loadingMessage, setLoadingMessage] = useState("Quiz hazırlanıyor...");
     const [questions, setQuestions] = useState<Question[]>([]);
     const [currentIndex, setCurrentIndex] = useState(0);
+    const [allWords, setAllWords] = useState<any[]>([]); // For 'all-words' mode
+    const [fetchingAllWords, setFetchingAllWords] = useState(false);
+
     const [inputValue, setInputValue] = useState("");
     const [quizFinished, setQuizFinished] = useState(false);
     const [timeLeft, setTimeLeft] = useState(300); // 5 mins
@@ -74,22 +86,50 @@ export default function QuizPlayClient({ mode = 'normal', overrideWords = [] }: 
         return () => window.removeEventListener('beforeunload', handleBeforeUnload);
     }, [quizFinished]);
 
-    // Initialize Data
+    // Initialize Data (Normal Mode & Random Mode)
     useEffect(() => {
         if (user && !initialized && mode !== 'daily') {
             dispatch(fetchAppData(user.uid));
         }
     }, [user, initialized, dispatch, mode]);
 
+    // Fetch All Words if needed
+    useEffect(() => {
+        const loadAllWords = async () => {
+            if (isRandom && querySource === 'all-words' && allWords.length === 0 && !fetchingAllWords) {
+                setFetchingAllWords(true);
+                try {
+                    setLoadingMessage("Tüm kelimeler yükleniyor...");
+                    const words = await getAllWords();
+                    setAllWords(words);
+                } catch (error) {
+                    console.error("Error loading all words:", error);
+                    alert("Kelimeler yüklenirken bir hata oluştu.");
+                } finally {
+                    setFetchingAllWords(false);
+                }
+            }
+        };
+        loadAllWords();
+    }, [isRandom, querySource, allWords.length, fetchingAllWords]);
+
+    // Determine proper word list based on mode
+    const activeWords = isDaily ? overrideWords : (
+        isRandom && querySource === 'all-words' ? allWords : userWords
+    );
+
     // Check availability and Start Quiz Sequence
     useEffect(() => {
-        // Wait for Redux to be ready ONLY if normal mode
-        if (mode === 'normal' && (!initialized || reduxLoading)) return;
+        // Wait conditions
+        if (mode === 'normal' && !isRandom && (!initialized || reduxLoading)) return;
 
-        // If loaded but no user words?
-        if (mode === 'normal' && userWords.length === 0) {
-            // Already handled below
-        }
+        // For All Words: Wait if fetching is in progress. 
+        if (isRandom && querySource === 'all-words' && fetchingAllWords) return;
+
+        // For My Words: Wait if app data is not initialized.
+        if (isRandom && querySource === 'my-words' && (!initialized || reduxLoading)) return;
+
+        // If loaded but no user words - Handled below
 
         const startQuizSequence = async () => {
             // 1. Validation
@@ -97,77 +137,127 @@ export default function QuizPlayClient({ mode = 'normal', overrideWords = [] }: 
                 if (mode === 'normal') {
                     alert(t.quiz.notEnoughWords);
                     router.push('/');
+                } else if (isRandom) {
+                    alert(t.quiz.notEnoughWords || "Quiz başlatılamadı: Yeterli kelime yok.");
+                    router.push('/quiz');
                 }
+                setLoading(false);
                 return;
             }
 
-            // 2. Prepare Data
-            const groupedWords: Record<string, any[]> = {};
+            // 3. Prepare Questions
+            let quizQuestions: Question[] = [];
 
-            activeWords.forEach((word: any) => {
-                // Determine answer based on direction
-                const answer = (direction === 'eng-tr' ? word.tr : word.eng)?.trim();
-                if (!answer) return;
+            if (isRandom) {
+                // RANDOM MODE LOGIC
 
-                // Standardize letter with tr-TR locale
-                const letter = answer.charAt(0).toLocaleUpperCase('tr-TR');
-
-                if (!groupedWords[letter]) {
-                    groupedWords[letter] = [];
+                // Insufficient words check for warning
+                if (activeWords.length < queryCount) {
+                    alert(`${t.quiz.notEnoughWords || "Yeterli kelime yok."} (${activeWords.length} / ${queryCount})\nMevcut kelimelerle başlanıyor.`);
                 }
-                groupedWords[letter].push(word);
-            });
 
-            // 3. Determine Alphabet (Only Used Letters)
-            const usedLetters = Object.keys(groupedWords);
-            const targetAlphabet = usedLetters.sort((a, b) => new Intl.Collator('tr-TR').compare(a, b));
+                // Shuffle and Slice
+                const shuffled = [...activeWords].sort(() => 0.5 - Math.random());
+                const selectedWords = shuffled.slice(0, queryCount);
 
-            // 4. Generate Questions for each letter in Alphabet
-            const quizQuestions: Question[] = targetAlphabet.map((letter) => {
-                const availableWords = groupedWords[letter];
-
-                if (availableWords && availableWords.length > 0) {
-                    // Randomly select one word
-                    const randomWord = availableWords[Math.floor(Math.random() * availableWords.length)];
-
+                quizQuestions = selectedWords.map((word, index) => {
                     // FIND ALL VALID ANSWERS
-                    const questionText = direction === 'eng-tr' ? randomWord.eng : randomWord.tr;
+                    const questionText = direction === 'eng-tr' ? word.eng : word.tr;
 
-                    // Filter from Redux userWords
-                    const validAnswerList = userWords
+                    // Filter from proper validation source
+                    const validationSource = activeWords;
+
+                    const validAnswerList = validationSource
                         .filter((w: any) => {
                             const q = direction === 'eng-tr' ? w.eng : w.tr;
                             return q?.trim().toLocaleUpperCase('tr-TR') === questionText?.trim().toLocaleUpperCase('tr-TR');
                         })
                         .map((w: any) => direction === 'eng-tr' ? w.tr : w.eng);
 
-                    // Ensure the primary answer is included
-                    const primaryAnswer = direction === 'eng-tr' ? randomWord.tr : randomWord.eng;
-                    if (!validAnswerList.includes(primaryAnswer)) {
-                        validAnswerList.push(primaryAnswer);
-                    }
+                    // Ensure primary answer
+                    const primaryAnswer = direction === 'eng-tr' ? word.tr : word.eng;
+                    if (!validAnswerList.includes(primaryAnswer)) validAnswerList.push(primaryAnswer);
 
                     return {
-                        id: randomWord.id,
-                        letter: letter,
+                        id: word.id,
+                        // Fix for duplicate keys: Use string index instead of '?' for Random Mode
+                        letter: (index + 1).toString(),
                         question: questionText,
                         correctAnswer: primaryAnswer,
                         validAnswers: validAnswerList,
                         status: 'empty',
                         isLocked: false
                     };
-                } else {
-                    return {
-                        id: `locked-${letter}`,
-                        letter: letter,
-                        question: '',
-                        correctAnswer: '',
-                        validAnswers: [],
-                        status: 'locked',
-                        isLocked: true
-                    };
-                }
-            });
+                });
+            } else {
+                // CLASSIC ALPHABET LOGIC
+                const groupedWords: Record<string, any[]> = {};
+
+                activeWords.forEach((word: any) => {
+                    // Determine answer based on direction
+                    const answer = (direction === 'eng-tr' ? word.tr : word.eng)?.trim();
+                    if (!answer) return;
+
+                    // Standardize letter with tr-TR locale
+                    const letter = answer.charAt(0).toLocaleUpperCase('tr-TR');
+
+                    if (!groupedWords[letter]) {
+                        groupedWords[letter] = [];
+                    }
+                    groupedWords[letter].push(word);
+                });
+
+                // 3. Determine Alphabet (Only Used Letters)
+                const usedLetters = Object.keys(groupedWords);
+                const targetAlphabet = usedLetters.sort((a, b) => new Intl.Collator('tr-TR').compare(a, b));
+
+                // 4. Generate Questions for each letter in Alphabet
+                quizQuestions = targetAlphabet.map((letter) => {
+                    const availableWords = groupedWords[letter];
+
+                    if (availableWords && availableWords.length > 0) {
+                        // Randomly select one word
+                        const randomWord = availableWords[Math.floor(Math.random() * availableWords.length)];
+
+                        // FIND ALL VALID ANSWERS
+                        const questionText = direction === 'eng-tr' ? randomWord.eng : randomWord.tr;
+
+                        // Filter from Redux userWords
+                        const validAnswerList = userWords
+                            .filter((w: any) => {
+                                const q = direction === 'eng-tr' ? w.eng : w.tr;
+                                return q?.trim().toLocaleUpperCase('tr-TR') === questionText?.trim().toLocaleUpperCase('tr-TR');
+                            })
+                            .map((w: any) => direction === 'eng-tr' ? w.tr : w.eng);
+
+                        // Ensure the primary answer is included
+                        const primaryAnswer = direction === 'eng-tr' ? randomWord.tr : randomWord.eng;
+                        if (!validAnswerList.includes(primaryAnswer)) {
+                            validAnswerList.push(primaryAnswer);
+                        }
+
+                        return {
+                            id: randomWord.id,
+                            letter: letter,
+                            question: questionText,
+                            correctAnswer: primaryAnswer,
+                            validAnswers: validAnswerList,
+                            status: 'empty',
+                            isLocked: false
+                        };
+                    } else {
+                        return {
+                            id: `locked-${letter}`,
+                            letter: letter,
+                            question: '',
+                            correctAnswer: '',
+                            validAnswers: [],
+                            status: 'locked',
+                            isLocked: true
+                        };
+                    }
+                });
+            }
 
             setQuestions(quizQuestions);
 
@@ -187,8 +277,6 @@ export default function QuizPlayClient({ mode = 'normal', overrideWords = [] }: 
 
             for (let i = 0; i < messages.length; i++) {
                 setLoadingMessage(messages[i]);
-                // Random delay between 2-4 seconds for each step (total ~15s)
-                // Reducing slightly since data is faster now, but user likes the "feel".
                 await new Promise(r => setTimeout(r, 1500 + Math.random() * 1000));
             }
 
@@ -197,7 +285,7 @@ export default function QuizPlayClient({ mode = 'normal', overrideWords = [] }: 
 
         startQuizSequence();
 
-    }, [userWords, initialized, reduxLoading, direction, router]);
+    }, [userWords, initialized, reduxLoading, direction, router, activeWords, isRandom, querySource, fetchingAllWords, allWords.length, queryCount, mode]);
 
     // Cleanup localstorage on mount
     useEffect(() => {
@@ -233,11 +321,6 @@ export default function QuizPlayClient({ mode = 'normal', overrideWords = [] }: 
         const currentQ = questions[currentIndex];
         if (!currentQ || currentQ.isLocked) return;
 
-        // Prevent re-answering if already correct or wrong (but allow if empty/skipped before?)
-        // User requirements: "yanlış soruya dönülmesin", "boş bırakılan soruya dönülebilsin"
-        // So if status is 'correct' or 'wrong', we can't change it.
-        // But we are here meaning user clicked Submit.
-
         if (currentQ.status === 'correct' || currentQ.status === 'wrong') return;
 
         const normalizedInput = normalizeString(inputValue);
@@ -251,7 +334,7 @@ export default function QuizPlayClient({ mode = 'normal', overrideWords = [] }: 
         updatedQuestions[currentIndex] = {
             ...currentQ,
             userAnswer: inputValue,
-            status: isCorrect ? 'correct' : 'wrong' // Yanlışsa 'wrong' olur ve bir daha değişmez
+            status: isCorrect ? 'correct' : 'wrong'
         };
 
         setQuestions(updatedQuestions);
@@ -275,39 +358,12 @@ export default function QuizPlayClient({ mode = 'normal', overrideWords = [] }: 
             }
             nextIndex++;
         }
-        // If end of list, verify if all regular questions answered?
-        // Or just stay at last question? 
-        // Let's loop back to start to find unanswered 'empty' questions?
-        // User logic: "sonrakine geçildi" -> linear flow usually.
-        // But user wants to return to empty questions.
-        // Let's just find the next available. If none, stay.
 
         // Find first empty question from start
         const firstEmpty = currentQuestions.findIndex(q => !q.isLocked && q.status === 'empty');
         if (firstEmpty !== -1 && firstEmpty !== currentIndex) {
             setCurrentIndex(firstEmpty);
             setInputValue("");
-        } else {
-            // All answered or we are at the only one left.
-            // Maybe show Finish button?
-        }
-    };
-
-    const goToPreviousQuestion = () => {
-        let prevIndex = currentIndex - 1;
-        while (prevIndex >= 0) {
-            if (!questions[prevIndex].isLocked) {
-                setCurrentIndex(prevIndex);
-                // If it was already answered (correct/wrong), showing the answer is fine but locked input
-                // If empty, restore input (but we clear input on submit usually)
-                setInputValue(questions[prevIndex].status === 'correct' || questions[prevIndex].status === 'wrong'
-                    ? questions[prevIndex].correctAnswer // Show correct answer if finished? Or user answer?
-                    // Proposal: If answered, show user answer and status. Handled in UI.
-                    : ""
-                );
-                return;
-            }
-            prevIndex--;
         }
     };
 
@@ -337,13 +393,8 @@ export default function QuizPlayClient({ mode = 'normal', overrideWords = [] }: 
             }
         });
 
-        // Time Bonus (10s = 1pt)
-        // If time is up, timeLeft is 0. 
-        // We need the ACTUAL time left when finish was called.
-        // We can get it from ref or localized state if we stop timer first.
         const currentTimeLeft = isTimeUp ? 0 : parseInt(localStorage.getItem('quiz_time_left') || '0', 10);
-        const timeBonus = 0; // Time bonus removed
-        // score += timeBonus; // Disabled
+        const timeBonus = 0;
         if (score < 0) score = 0;
 
         // Sanitize data -> Remove undefined values and ensure types
@@ -388,7 +439,7 @@ export default function QuizPlayClient({ mode = 'normal', overrideWords = [] }: 
 
                 // Redirect to detailed result page
                 if (result && result.id) {
-                    setTimeout(() => router.push(`/quiz/result?id=${result.id}`), 500); // Small delay for confetti
+                    setTimeout(() => router.push(`/quiz/result?id=${result.id}`), 500);
                     return;
                 }
             }
@@ -552,7 +603,7 @@ export default function QuizPlayClient({ mode = 'normal', overrideWords = [] }: 
                                             onChange={(e) => setInputValue(e.target.value.toLocaleUpperCase('tr-TR'))}
                                             onKeyDown={(e) => e.key === 'Enter' && canSubmit && handleSubmitAnswer()}
                                             disabled={isCurrentAnswered}
-                                            placeholder={`${currentQ.letter} ile başlayan...`}
+                                            placeholder={isRandom ? "Cevabınız..." : `${currentQ.letter} ile başlayan...`}
                                             className="w-full bg-slate-50 border-2 border-slate-200 focus:border-blue-500 focus:bg-white rounded-2xl py-4 px-6 text-xl font-bold text-center outline-none transition-all placeholder:text-slate-300 text-slate-800"
                                             autoFocus
                                         />
