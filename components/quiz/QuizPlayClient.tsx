@@ -152,7 +152,7 @@ export default function QuizPlayClient({ mode = 'normal', overrideWords = [] }: 
                 // RANDOM MODE LOGIC
 
                 // Insufficient words check for warning
-                if (activeWords.length < queryCount) {
+                if (activeWords.length < queryCount && queryCount !== 9999) {
                     alert(`${t.quiz.notEnoughWords || "Yeterli kelime yok."} (${activeWords.length} / ${queryCount})\nMevcut kelimelerle başlanıyor.`);
                 }
 
